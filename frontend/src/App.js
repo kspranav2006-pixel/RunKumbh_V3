@@ -24,7 +24,53 @@ function App() {
   useEffect(() => {
     fetchEvents();
     fetchGallery();
+    checkPaymentStatus();
   }, []);
+
+  const checkPaymentStatus = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    if (sessionId) {
+      // Poll for payment status
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      const pollStatus = async () => {
+        try {
+          const response = await axios.get(`${API}/payments/checkout/status/${sessionId}`);
+          
+          if (response.data.payment_status === 'paid') {
+            toast({
+              title: 'Payment Successful! 🎉',
+              description: 'Your registration is confirmed. Check your email for details.',
+            });
+            // Clear URL params
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          } else if (response.data.status === 'expired') {
+            toast({
+              title: 'Payment Expired',
+              description: 'Please try registering again.',
+              variant: 'destructive'
+            });
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          }
+          
+          // Continue polling if pending
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(pollStatus, 2000);
+          }
+        } catch (error) {
+          console.error('Error checking payment status:', error);
+        }
+      };
+      
+      pollStatus();
+    }
+  };
 
   const fetchEvents = async () => {
     try {
@@ -176,47 +222,66 @@ function HeroSection({ scrollToSection }) {
           alt="Marathon runners"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-900/80 via-orange-900/70 to-sky-900/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-900/85 via-orange-900/75 to-sky-900/85"></div>
       </div>
 
-      {/* Animated Elements */}
+      {/* Animated 3D Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="droplet droplet-1"></div>
         <div className="droplet droplet-2"></div>
         <div className="droplet droplet-3"></div>
+        <div className="droplet droplet-4"></div>
         <div className="sunray sunray-1"></div>
         <div className="sunray sunray-2"></div>
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 animate-fade-in-up">
-          Experience the<br />
-          <span className="bg-gradient-to-r from-teal-300 to-orange-300 bg-clip-text text-transparent">
-            Monsoon & Summer
+      <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+        {/* Prize Badge */}
+        <div className="prize-badge inline-block px-8 py-3 rounded-full text-white font-bold text-xl mb-6 animate-fade-in-up">
+          🏆 Total Cash Prize: ₹30,000 🏆
+        </div>
+        
+        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-4 animate-fade-in-up animation-delay-200 neon-text">
+          RUN KUMBHA
+          <br />
+          <span className="gradient-text-3d text-5xl sm:text-6xl lg:text-8xl">
+            MONSOON RUN 2.0
           </span>
-          <br />Running Revolution
         </h1>
-        <p className="text-xl sm:text-2xl text-gray-100 mb-8 max-w-3xl mx-auto animate-fade-in-up animation-delay-200">
-          Join the ultimate running experience where refreshing monsoon showers meet summer sunshine energy
+        
+        <p className="text-xl sm:text-2xl lg:text-3xl text-yellow-300 font-semibold mb-3 animate-fade-in-up animation-delay-400">
+          🌧️ 2026-27 Edition 🌧️
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up animation-delay-400">
+        
+        <p className="text-lg sm:text-xl text-gray-100 mb-6 animate-fade-in-up animation-delay-400">
+          <span className="font-bold">RV Institute of Technology and Management</span>
+          <br />Department of Physical Education & Sports
+        </p>
+        
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-8 inline-block animate-fade-in-up animation-delay-600">
+          <p className="text-white text-lg font-semibold mb-3">📅 Registration Open</p>
+          <p className="text-teal-300 text-2xl font-bold">20th April - 15th May 2026</p>
+          <p className="text-gray-200 mt-3">🎁 Medal | Certificate | T-Shirt | Refreshments</p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up animation-delay-600">
           <Button
             size="lg"
             onClick={() => scrollToSection('events')}
-            className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-lg px-8 py-6 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+            className="shine-effect bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-xl px-10 py-7 shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-200"
             data-testid="view-events-button"
           >
-            View Events <ArrowRight className="ml-2" />
+            View Categories <ArrowRight className="ml-2" />
           </Button>
           <Button
             size="lg"
             variant="outline"
             onClick={() => scrollToSection('contact')}
-            className="bg-white/10 backdrop-blur-md text-white border-2 border-white/30 hover:bg-white/20 text-lg px-8 py-6 shadow-xl"
+            className="glass-effect-3d text-white border-2 border-white/40 hover:bg-white/20 text-xl px-10 py-7 shadow-2xl"
             data-testid="get-in-touch-button"
           >
-            Get in Touch
+            Contact Us
           </Button>
         </div>
       </div>
@@ -229,34 +294,42 @@ function AboutSection() {
     {
       icon: <Droplets className="w-12 h-12 text-teal-500" />,
       title: 'Monsoon Magic',
-      description: 'Run through refreshing rain showers and experience nature\'s cooling embrace while you push your limits.'
+      description: 'Run through refreshing rain showers and experience nature\'s cooling embrace. Feel the monsoon energy!'
     },
     {
       icon: <Sun className="w-12 h-12 text-orange-500" />,
       title: 'Summer Energy',
-      description: 'Feel the warmth of summer sunshine energizing your every step in our vibrant running community.'
+      description: 'Experience the warmth and vibrance of summer sunshine energizing your every step.'
     },
     {
       icon: <Trophy className="w-12 h-12 text-yellow-500" />,
-      title: 'Champion Spirit',
-      description: 'Celebrate achievements, break personal records, and join a community of passionate runners.'
+      title: '₹30,000 Prize',
+      description: 'Compete for the total cash prize pool of ₹30,000! Break records and win big!'
     },
     {
       icon: <Users className="w-12 h-12 text-blue-500" />,
-      title: 'Community First',
-      description: 'Connect with fellow runners, share experiences, and be part of something bigger than yourself.'
+      title: '5 Categories',
+      description: 'Open, Students, Family, Couple & Campus runs. Something for everyone at RVITM!'
     }
   ];
 
   return (
-    <section id="about" className="py-20 px-4 sm:px-6 lg:px-8" data-testid="about-section">
-      <div className="max-w-7xl mx-auto">
+    <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden" data-testid="about-section">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle, #0d9488 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-            About <span className="bg-gradient-to-r from-teal-600 to-orange-500 bg-clip-text text-transparent">RunKumbh</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 animate-slide-in-left">
+            About <span className="gradient-text-3d">Run Kumbha 2.0</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            India's premier running event series that celebrates the perfect blend of monsoon freshness and summer vitality
+          <p className="text-xl sm:text-2xl text-gray-700 max-w-4xl mx-auto font-semibold">
+            RV Institute of Technology and Management
+          </p>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto mt-2">
+            India's premier monsoon running event celebrating fitness, community, and the spirit of competition
           </p>
         </div>
 
@@ -264,12 +337,13 @@ function AboutSection() {
           {features.map((feature, index) => (
             <Card
               key={index}
-              className="border-2 border-transparent hover:border-teal-200 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-2 bg-white/80 backdrop-blur-sm"
+              className="card-3d border-2 border-transparent hover:border-teal-300 bg-white/90 backdrop-blur-sm animate-slide-in-right"
+              style={{animationDelay: `${index * 0.1}s`}}
               data-testid={`feature-card-${index}`}
             >
               <CardHeader>
-                <div className="mb-4">{feature.icon}</div>
-                <CardTitle className="text-xl">{feature.title}</CardTitle>
+                <div className="mb-4 floating-badge">{feature.icon}</div>
+                <CardTitle className="text-xl font-bold">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">{feature.description}</p>
@@ -296,46 +370,50 @@ function EventsSection({ events, toast }) {
     setIsRegistering(true);
 
     try {
-      const response = await axios.post(`${API}/registrations`, {
+      // Get current origin for payment redirect
+      const originUrl = window.location.origin;
+      
+      // Create payment checkout session
+      const response = await axios.post(`${API}/payments/checkout/session`, {
         event_id: selectedEvent.id,
+        origin_url: originUrl,
         ...registrationData
       });
 
-      toast({
-        title: 'Registration Successful! 🎉',
-        description: `Your BIB number is: ${response.data.bib_number}`,
-      });
-
-      setSelectedEvent(null);
-      setRegistrationData({ user_name: '', user_email: '', user_phone: '' });
+      // Redirect to Stripe checkout
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      }
     } catch (error) {
       toast({
         title: 'Registration Failed',
         description: error.response?.data?.detail || 'Please try again later',
         variant: 'destructive'
       });
-    } finally {
       setIsRegistering(false);
     }
   };
 
   return (
-    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-teal-50 to-orange-50" data-testid="events-section">
+    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-teal-50 via-orange-50 to-sky-50" data-testid="events-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-            Upcoming <span className="bg-gradient-to-r from-teal-600 to-orange-500 bg-clip-text text-transparent">Events</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 animate-fade-in-up">
+            Registration <span className="gradient-text-3d">Categories</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Choose your challenge and be part of an unforgettable running experience
+          <p className="text-xl sm:text-2xl text-gray-700 max-w-4xl mx-auto mb-3 font-semibold">
+            Choose Your Challenge & Run for Glory!
           </p>
+          <div className="inline-block bg-gradient-to-r from-teal-500 to-orange-500 text-white px-6 py-2 rounded-full text-lg font-bold pulse-glow-3d">
+            Registration: 20 April - 15 May 2026
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {events.map((event) => (
             <Card
               key={event.id}
-              className="overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-white"
+              className="card-3d overflow-hidden bg-white shine-effect"
               data-testid={`event-card-${event.id}`}
             >
               <div className="relative h-48 overflow-hidden">
@@ -427,8 +505,11 @@ function EventsSection({ events, toast }) {
                         disabled={isRegistering}
                         data-testid="submit-registration-button"
                       >
-                        {isRegistering ? 'Registering...' : 'Complete Registration'}
+                        {isRegistering ? 'Processing...' : `Pay ₹${event.registration_fee} & Register`}
                       </Button>
+                      <p className="text-xs text-center text-gray-500 mt-2">
+                        Secure payment powered by Stripe
+                      </p>
                     </form>
                   </DialogContent>
                 </Dialog>
@@ -522,42 +603,49 @@ function ContactSection({ toast }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="space-y-8">
-            <Card className="bg-white/80 backdrop-blur-sm border-2 hover:border-teal-200 transition-all">
+            <Card className="card-3d bg-white/90 backdrop-blur-sm border-2 hover:border-teal-300">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <Mail className="w-6 h-6 text-teal-600" />
-                  <CardTitle>Email Us</CardTitle>
+                  <Phone className="w-7 h-7 text-teal-600" />
+                  <CardTitle className="text-xl">Contact Numbers</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">info@runkumbh.com</p>
-                <p className="text-gray-600">support@runkumbh.com</p>
+              <CardContent className="space-y-2">
+                <p className="text-gray-700 font-medium">Lt. Raghu G M</p>
+                <p className="text-teal-600 font-semibold text-lg">📞 +91 9743743618</p>
+                <p className="text-gray-700 font-medium mt-3">Pranav</p>
+                <p className="text-orange-600 font-semibold text-lg">📞 +91 8073290482</p>
+                <p className="text-gray-700 font-medium mt-3">Prajeet Gurlahosur</p>
+                <p className="text-blue-600 font-semibold text-lg">📞 +91 9845610718</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/80 backdrop-blur-sm border-2 hover:border-orange-200 transition-all">
+            <Card className="card-3d bg-white/90 backdrop-blur-sm border-2 hover:border-orange-300">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <Phone className="w-6 h-6 text-orange-600" />
-                  <CardTitle>Call Us</CardTitle>
+                  <MapPin className="w-7 h-7 text-orange-600" />
+                  <CardTitle className="text-xl">Location</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">+91 98765 43210</p>
-                <p className="text-gray-600">+91 87654 32109</p>
+                <p className="text-gray-700 font-semibold">RV Institute of Technology and Management</p>
+                <p className="text-gray-600 mt-2">Department of Physical Education & Sports</p>
+                <p className="text-gray-600">Bengaluru, Karnataka</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/80 backdrop-blur-sm border-2 hover:border-blue-200 transition-all">
+            <Card className="card-3d bg-white/90 backdrop-blur-sm border-2 hover:border-blue-300">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <MessageSquare className="w-6 h-6 text-blue-600" />
-                  <CardTitle>Social Media</CardTitle>
+                  <MessageSquare className="w-7 h-7 text-blue-600" />
+                  <CardTitle className="text-xl">Event Details</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">@runkumbh on all platforms</p>
-                <p className="text-gray-600">Facebook | Instagram | Twitter</p>
+                <p className="text-gray-700">🏃 5 Categories Available</p>
+                <p className="text-gray-700">🏆 ₹30,000 Total Prize</p>
+                <p className="text-gray-700">🎁 Medals & Certificates</p>
+                <p className="text-gray-700">👕 Event T-Shirt Included</p>
               </CardContent>
             </Card>
           </div>
@@ -630,17 +718,23 @@ function ContactSection({ toast }) {
 
 function Footer({ scrollToSection }) {
   return (
-    <footer className="bg-gradient-to-r from-teal-900 to-orange-900 text-white py-12 px-4 sm:px-6 lg:px-8" data-testid="footer">
+    <footer className="bg-gradient-to-r from-teal-900 via-blue-900 to-orange-900 text-white py-12 px-4 sm:px-6 lg:px-8" data-testid="footer">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <Droplets className="w-8 h-8" />
               <Sun className="w-8 h-8" />
-              <span className="text-2xl font-bold">RunKumbh</span>
+              <span className="text-2xl font-bold">Run Kumbha 2.0</span>
             </div>
-            <p className="text-gray-300">
-              India's premier running event series celebrating monsoon freshness and summer vitality.
+            <p className="text-gray-300 font-semibold">
+              RV Institute of Technology and Management
+            </p>
+            <p className="text-gray-400 text-sm mt-2">
+              Department of Physical Education & Sports
+            </p>
+            <p className="text-yellow-400 font-bold mt-3">
+              🏆 ₹30,000 Cash Prize
             </p>
           </div>
 
@@ -649,12 +743,12 @@ function Footer({ scrollToSection }) {
             <ul className="space-y-2">
               <li>
                 <button onClick={() => scrollToSection('about')} className="text-gray-300 hover:text-white transition-colors">
-                  About Us
+                  About Event
                 </button>
               </li>
               <li>
                 <button onClick={() => scrollToSection('events')} className="text-gray-300 hover:text-white transition-colors">
-                  Events
+                  Categories
                 </button>
               </li>
               <li>
@@ -671,15 +765,17 @@ function Footer({ scrollToSection }) {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Connect With Us</h3>
-            <p className="text-gray-300 mb-2">Email: info@runkumbh.com</p>
-            <p className="text-gray-300 mb-2">Phone: +91 98765 43210</p>
-            <p className="text-gray-300">Follow us @runkumbh</p>
+            <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+            <p className="text-gray-300 mb-2">Lt. Raghu G M: +91 9743743618</p>
+            <p className="text-gray-300 mb-2">Pranav: +91 8073290482</p>
+            <p className="text-gray-300 mb-4">Prajeet: +91 9845610718</p>
+            <p className="text-sm text-gray-400">Registration: 20 April - 15 May 2026</p>
           </div>
         </div>
 
         <div className="border-t border-white/20 mt-8 pt-8 text-center text-gray-300">
-          <p>© 2025 RunKumbh. All rights reserved. Where Monsoon Meets Summer.</p>
+          <p className="font-semibold">© 2026-27 Run Kumbha - Monsoon Run 2.0</p>
+          <p className="text-sm mt-2">RV Institute of Technology and Management | Where Monsoon Meets Energy 🌧️⚡</p>
         </div>
       </div>
     </footer>

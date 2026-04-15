@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, status, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -7,11 +7,12 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,6 +26,9 @@ db = client[os.environ['DB_NAME']]
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+# Stripe Configuration
+STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -136,6 +140,30 @@ class Contact(BaseModel):
     message: str
     submitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "new"
+
+# Payment Models
+class PaymentCheckoutRequest(BaseModel):
+    event_id: str
+    user_name: str
+    user_email: EmailStr
+    user_phone: str
+    origin_url: str
+
+class PaymentTransaction(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    event_id: str
+    user_name: str
+    user_email: EmailStr
+    user_phone: str
+    amount: float
+    currency: str
+    payment_status: str = "pending"
+    status: str = "initiated"
+    metadata: Dict = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -318,6 +346,188 @@ async def get_contacts():
         if isinstance(contact.get('submitted_at'), str):
             contact['submitted_at'] = datetime.fromisoformat(contact['submitted_at'])
     return contacts
+
+# Payment Routes
+@api_router.post("/payments/checkout/session")
+async def create_payment_checkout(request: Request, payment_request: PaymentCheckoutRequest):
+    # Get event details
+    event = await db.events.find_one({"id": payment_request.event_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check if already registered
+    existing_reg = await db.registrations.find_one({
+        "event_id": payment_request.event_id,
+        "user_email": payment_request.user_email
+    })
+    if existing_reg:
+        raise HTTPException(status_code=400, detail="Already registered for this event")
+    
+    # Check capacity
+    if event.get('current_participants', 0) >= event.get('max_participants', 0):
+        raise HTTPException(status_code=400, detail="Event is full")
+    
+    # Get amount from event (server-side, not from frontend)
+    amount = float(event['registration_fee'])
+    currency = "inr"
+    
+    # Build success and cancel URLs from frontend origin
+    origin_url = payment_request.origin_url
+    success_url = f"{origin_url}?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = origin_url
+    
+    # Initialize Stripe Checkout
+    host_url = str(request.base_url).rstrip('/')
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    
+    # Create checkout session
+    metadata = {
+        "event_id": payment_request.event_id,
+        "event_title": event['title'],
+        "user_name": payment_request.user_name,
+        "user_email": payment_request.user_email,
+        "user_phone": payment_request.user_phone
+    }
+    
+    checkout_request = CheckoutSessionRequest(
+        amount=amount,
+        currency=currency,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata
+    )
+    
+    session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
+    
+    # Create payment transaction record
+    payment_transaction = PaymentTransaction(
+        session_id=session.session_id,
+        event_id=payment_request.event_id,
+        user_name=payment_request.user_name,
+        user_email=payment_request.user_email,
+        user_phone=payment_request.user_phone,
+        amount=amount,
+        currency=currency,
+        payment_status="pending",
+        status="initiated",
+        metadata=metadata
+    )
+    
+    doc = payment_transaction.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await db.payment_transactions.insert_one(doc)
+    
+    return {"url": session.url, "session_id": session.session_id}
+
+@api_router.get("/payments/checkout/status/{session_id}")
+async def get_payment_status(request: Request, session_id: str):
+    # Get payment transaction
+    transaction = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Payment transaction not found")
+    
+    # If already processed as paid, return the status
+    if transaction.get('payment_status') == 'paid':
+        return {
+            "status": transaction.get('status'),
+            "payment_status": transaction.get('payment_status'),
+            "amount_total": int(transaction.get('amount', 0) * 100),
+            "currency": transaction.get('currency'),
+            "metadata": transaction.get('metadata', {})
+        }
+    
+    # Initialize Stripe Checkout
+    host_url = str(request.base_url).rstrip('/')
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    
+    # Get checkout status from Stripe
+    checkout_status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
+    
+    # Update transaction status
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {
+            "$set": {
+                "status": checkout_status.status,
+                "payment_status": checkout_status.payment_status,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # If payment is successful and not already processed, create registration
+    if checkout_status.payment_status == 'paid':
+        # Check if registration already exists (prevent duplicate)
+        existing_reg = await db.registrations.find_one({
+            "event_id": transaction['event_id'],
+            "user_email": transaction['user_email']
+        })
+        
+        if not existing_reg:
+            # Create registration
+            reg_data = {
+                "user_id": str(uuid.uuid4()),
+                "event_id": transaction['event_id'],
+                "user_email": transaction['user_email'],
+                "user_name": transaction['user_name'],
+                "user_phone": transaction['user_phone'],
+                "bib_number": f"BIB{str(uuid.uuid4())[:8].upper()}",
+                "status": "confirmed"
+            }
+            
+            reg_obj = Registration(**reg_data)
+            doc = reg_obj.model_dump()
+            doc['registration_date'] = doc['registration_date'].isoformat()
+            
+            await db.registrations.insert_one(doc)
+            
+            # Update event participant count
+            await db.events.update_one(
+                {"id": transaction['event_id']},
+                {"$inc": {"current_participants": 1}}
+            )
+    
+    return {
+        "status": checkout_status.status,
+        "payment_status": checkout_status.payment_status,
+        "amount_total": checkout_status.amount_total,
+        "currency": checkout_status.currency,
+        "metadata": checkout_status.metadata
+    }
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    # Get raw body
+    body = await request.body()
+    signature = request.headers.get("Stripe-Signature")
+    
+    # Initialize Stripe Checkout
+    host_url = str(request.base_url).rstrip('/')
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    
+    try:
+        # Handle webhook
+        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        
+        # Update transaction based on webhook event
+        await db.payment_transactions.update_one(
+            {"session_id": webhook_response.session_id},
+            {
+                "$set": {
+                    "payment_status": webhook_response.payment_status,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Include the router in the main app
 app.include_router(api_router)
