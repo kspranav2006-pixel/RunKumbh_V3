@@ -1,4 +1,38 @@
 /* Modern Vibrant Color Scheme - Purple/Blue/Green */
+
+/* Custom Cursor */
+* {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%238b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10" fill="%233b82f6" opacity="0.3"/><path d="M12 2 L12 22 M2 12 L22 12"/></svg>'), auto;
+}
+
+button, a, input, textarea {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%238b5cf6"><circle cx="12" cy="12" r="8"/></svg>'), pointer;
+}
+
+/* Hide Emergent Watermark */
+button[title*="Made"],
+a[title*="Made"],
+div[title*="Made"],
+*[aria-label*="Made"],
+*[data-emergent],
+button:has(svg):last-child {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Target watermark by fixed position in bottom right */
+button[style*="position: fixed"][style*="bottom"][style*="right"] {
+  display: none !important;
+}
+
+/* Global Body Background with Gradient */
+body {
+  background: linear-gradient(135deg, #f3e8ff 0%, #dbeafe 50%, #d1fae5 100%) !important;
+  min-height: 100vh;
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;

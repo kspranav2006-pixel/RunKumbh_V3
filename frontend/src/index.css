@@ -113,3 +113,18 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+/* Absolute watermark removal */
+button[style*="z-index"] {
+  display: none !important;
+}
+
+body::after {
+  content: none !important;
+}
+
+*[style*="position: fixed"]:last-child {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

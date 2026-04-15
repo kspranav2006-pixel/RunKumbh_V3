@@ -14,7 +14,7 @@ import { Calendar, MapPin, Users, Trophy, Droplets, Sun, ArrowRight, Mail, Phone
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const EVENT_DATE = new Date('2026-06-21T06:00:00');
+const EVENT_DATE = new Date('2026-06-21T06:30:00');
 
 function App() {
   const [events, setEvents] = useState([]);
@@ -305,7 +305,7 @@ function CountdownSection() {
             <Clock className="w-10 h-10" />
             Event Countdown
           </h2>
-          <p className="text-white/90 text-lg">June 21, 2026 - Get Ready!</p>
+          <p className="text-white/90 text-lg">May 30, 2026 - Get Ready!</p>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
@@ -346,7 +346,7 @@ function AboutSection() {
   ];
 
   return (
-    <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-gradient-to-br from-white via-purple-50 to-blue-50" data-testid="about-section">
+    <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-gradient-to-br from-purple-100 via-blue-100 to-green-100" data-testid="about-section">
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle, #8b5cf6 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
       </div>
@@ -437,7 +437,7 @@ function EventsSection({ events, toast, scrollToSection }) {
   };
 
   return (
-    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-50 via-blue-50 to-green-50" data-testid="events-section">
+    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-100 via-blue-100 to-green-100" data-testid="events-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 animate-fade-in-up">
@@ -584,7 +584,7 @@ function EventsSection({ events, toast, scrollToSection }) {
 
 function RouteMapSection() {
   return (
-    <section id="routemap" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-green-50 to-purple-50" data-testid="routemap-section">
+    <section id="routemap" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-100 via-green-100 to-purple-100" data-testid="routemap-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
@@ -651,18 +651,18 @@ function RulesSection() {
       ]
     },
     {
-      title: "Prize & Rewards",
+      title: "Schedule",
       points: [
-        "Cash prize for 5K categories only",
-        "Minimum 50 participants per gender required",
-        "Medal for all finishers",
-        "Certificates will be emailed"
+        "5:30 AM - Registration",
+        "6:00 AM - Warm-up",
+        "6:30 AM - Marathon Start",
+        "8:30 AM - Prize Distribution"
       ]
     }
   ];
 
   return (
-    <section id="rules" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-green-50 via-purple-50 to-blue-50" data-testid="rules-section">
+    <section id="rules" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-green-100 via-purple-100 to-blue-100" data-testid="rules-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
@@ -752,7 +752,7 @@ function ContactSection({ toast }) {
   };
 
   return (
-    <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-50 via-blue-50 to-green-50" data-testid="contact-section">
+    <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-100 via-blue-100 to-green-100" data-testid="contact-section">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
@@ -775,7 +775,7 @@ function ContactSection({ toast }) {
               <CardContent className="space-y-2">
                 <p className="text-gray-700 font-medium">Lt. Raghu G M</p>
                 <p className="text-purple-600 font-semibold text-lg">📞 +91 9743743618</p>
-                <p className="text-gray-700 font-medium mt-3">Pranav</p>
+                <p className="text-gray-700 font-medium mt-3">K.S.Pranav</p>
                 <p className="text-blue-600 font-semibold text-lg">📞 +91 8073290482</p>
                 <p className="text-gray-700 font-medium mt-3">Prajeet Gurlahosur</p>
                 <p className="text-green-600 font-semibold text-lg">📞 +91 9845610718</p>
