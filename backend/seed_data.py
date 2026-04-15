@@ -32,7 +32,6 @@ async def seed_database():
             "distance": "5 km",
             "category": "Open 5K",
             "max_participants": 500,
-            "current_participants": 127,
             "image_url": "https://images.unsplash.com/photo-1452626038306-9aae5e071dd3",
             "registration_fee": 499.00,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -46,7 +45,6 @@ async def seed_database():
             "distance": "5 km",
             "category": "Students 5K",
             "max_participants": 400,
-            "current_participants": 89,
             "image_url": "https://images.pexels.com/photos/2402777/pexels-photo-2402777.jpeg",
             "registration_fee": 349.00,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -60,7 +58,6 @@ async def seed_database():
             "distance": "3 km",
             "category": "Campus 3K",
             "max_participants": 300,
-            "current_participants": 156,
             "image_url": "https://images.unsplash.com/photo-1530143311094-34d807799e8f",
             "registration_fee": 349.00,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -74,7 +71,6 @@ async def seed_database():
             "distance": "3 km",
             "category": "Family 3K",
             "max_participants": 200,
-            "current_participants": 67,
             "image_url": "https://images.unsplash.com/photo-1695655300485-d3da8bc72076",
             "registration_fee": 999.00,
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -88,7 +84,6 @@ async def seed_database():
             "distance": "3 km",
             "category": "Couple 3K",
             "max_participants": 150,
-            "current_participants": 54,
             "image_url": "https://images.unsplash.com/photo-1746046489457-9628dc3b8a1f",
             "registration_fee": 799.00,
             "created_at": datetime.now(timezone.utc).isoformat()

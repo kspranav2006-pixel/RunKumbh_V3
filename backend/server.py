@@ -88,7 +88,6 @@ class Event(BaseModel):
     max_participants: int
     image_url: str
     registration_fee: float
-    current_participants: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Registration Models
@@ -109,20 +108,6 @@ class Registration(BaseModel):
     registration_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "confirmed"
     bib_number: str
-
-# Gallery Models
-class GalleryCreate(BaseModel):
-    title: str
-    image_url: str
-    category: str = "event"
-
-class Gallery(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    title: str
-    image_url: str
-    category: str
-    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Contact Models
 class ContactCreate(BaseModel):
@@ -161,6 +146,7 @@ class PaymentTransaction(BaseModel):
     currency: str
     payment_status: str = "pending"
     status: str = "initiated"
+    bib_number: str = ""
     metadata: Dict = {}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -264,71 +250,6 @@ async def create_event(event_data: EventCreate):
     await db.events.insert_one(doc)
     return event_obj
 
-# Registration Routes
-@api_router.post("/registrations", response_model=Registration)
-async def create_registration(reg_data: RegistrationCreate):
-    # Check if event exists
-    event = await db.events.find_one({"id": reg_data.event_id})
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
-    
-    # Check if already registered
-    existing_reg = await db.registrations.find_one({
-        "event_id": reg_data.event_id,
-        "user_email": reg_data.user_email
-    })
-    if existing_reg:
-        raise HTTPException(status_code=400, detail="Already registered for this event")
-    
-    # Check capacity
-    if event.get('current_participants', 0) >= event.get('max_participants', 0):
-        raise HTTPException(status_code=400, detail="Event is full")
-    
-    # Create registration
-    reg_dict = reg_data.model_dump()
-    reg_dict['user_id'] = str(uuid.uuid4())
-    reg_dict['bib_number'] = f"BIB{str(uuid.uuid4())[:8].upper()}"
-    reg_obj = Registration(**reg_dict)
-    
-    doc = reg_obj.model_dump()
-    doc['registration_date'] = doc['registration_date'].isoformat()
-    
-    await db.registrations.insert_one(doc)
-    
-    # Update event participant count
-    await db.events.update_one(
-        {"id": reg_data.event_id},
-        {"$inc": {"current_participants": 1}}
-    )
-    
-    return reg_obj
-
-@api_router.get("/registrations/email/{email}", response_model=List[Registration])
-async def get_user_registrations(email: str):
-    registrations = await db.registrations.find({"user_email": email}, {"_id": 0}).to_list(1000)
-    for reg in registrations:
-        if isinstance(reg.get('registration_date'), str):
-            reg['registration_date'] = datetime.fromisoformat(reg['registration_date'])
-    return registrations
-
-# Gallery Routes
-@api_router.get("/gallery", response_model=List[Gallery])
-async def get_gallery():
-    images = await db.gallery.find({}, {"_id": 0}).to_list(1000)
-    for img in images:
-        if isinstance(img.get('uploaded_at'), str):
-            img['uploaded_at'] = datetime.fromisoformat(img['uploaded_at'])
-    return images
-
-@api_router.post("/gallery", response_model=Gallery)
-async def create_gallery_item(gallery_data: GalleryCreate):
-    gallery_obj = Gallery(**gallery_data.model_dump())
-    doc = gallery_obj.model_dump()
-    doc['uploaded_at'] = doc['uploaded_at'].isoformat()
-    
-    await db.gallery.insert_one(doc)
-    return gallery_obj
-
 # Contact Routes
 @api_router.post("/contact", response_model=Contact)
 async def create_contact(contact_data: ContactCreate):
@@ -356,16 +277,13 @@ async def create_payment_checkout(request: Request, payment_request: PaymentChec
         raise HTTPException(status_code=404, detail="Event not found")
     
     # Check if already registered
-    existing_reg = await db.registrations.find_one({
+    existing_reg = await db.payment_transactions.find_one({
         "event_id": payment_request.event_id,
-        "user_email": payment_request.user_email
+        "user_email": payment_request.user_email,
+        "payment_status": "paid"
     })
     if existing_reg:
         raise HTTPException(status_code=400, detail="Already registered for this event")
-    
-    # Check capacity
-    if event.get('current_participants', 0) >= event.get('max_participants', 0):
-        raise HTTPException(status_code=400, detail="Event is full")
     
     # Get amount from event (server-side, not from frontend)
     amount = float(event['registration_fee'])
@@ -381,13 +299,17 @@ async def create_payment_checkout(request: Request, payment_request: PaymentChec
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
+    # Generate BIB number
+    bib_number = f"BIB{str(uuid.uuid4())[:8].upper()}"
+    
     # Create checkout session
     metadata = {
         "event_id": payment_request.event_id,
         "event_title": event['title'],
         "user_name": payment_request.user_name,
         "user_email": payment_request.user_email,
-        "user_phone": payment_request.user_phone
+        "user_phone": payment_request.user_phone,
+        "bib_number": bib_number
     }
     
     checkout_request = CheckoutSessionRequest(
@@ -411,6 +333,7 @@ async def create_payment_checkout(request: Request, payment_request: PaymentChec
         currency=currency,
         payment_status="pending",
         status="initiated",
+        bib_number=bib_number,
         metadata=metadata
     )
     
@@ -436,7 +359,8 @@ async def get_payment_status(request: Request, session_id: str):
             "payment_status": transaction.get('payment_status'),
             "amount_total": int(transaction.get('amount', 0) * 100),
             "currency": transaction.get('currency'),
-            "metadata": transaction.get('metadata', {})
+            "metadata": transaction.get('metadata', {}),
+            "bib_number": transaction.get('bib_number', '')
         }
     
     # Initialize Stripe Checkout
@@ -475,7 +399,7 @@ async def get_payment_status(request: Request, session_id: str):
                 "user_email": transaction['user_email'],
                 "user_name": transaction['user_name'],
                 "user_phone": transaction['user_phone'],
-                "bib_number": f"BIB{str(uuid.uuid4())[:8].upper()}",
+                "bib_number": transaction['bib_number'],
                 "status": "confirmed"
             }
             
@@ -485,18 +409,16 @@ async def get_payment_status(request: Request, session_id: str):
             
             await db.registrations.insert_one(doc)
             
-            # Update event participant count
-            await db.events.update_one(
-                {"id": transaction['event_id']},
-                {"$inc": {"current_participants": 1}}
-            )
+            # TODO: Send confirmation email here
+            # Email will be sent with BIB number and event details
     
     return {
         "status": checkout_status.status,
         "payment_status": checkout_status.payment_status,
         "amount_total": checkout_status.amount_total,
         "currency": checkout_status.currency,
-        "metadata": checkout_status.metadata
+        "metadata": checkout_status.metadata,
+        "bib_number": transaction.get('bib_number', '')
     }
 
 @api_router.post("/webhook/stripe")
