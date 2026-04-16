@@ -493,6 +493,63 @@ async def get_all_registrations():
         "total_transactions": len(transactions)
     }
 
+@api_router.post("/admin/registrations")
+async def create_manual_registration(registration: RegistrationCreate):
+    # Check if already registered
+    existing_reg = await db.registrations.find_one({
+        "event_id": registration.event_id,
+        "user_email": registration.user_email
+    })
+    if existing_reg:
+        raise HTTPException(status_code=400, detail="Already registered for this event")
+    
+    # Create registration
+    reg_data = {
+        "user_id": str(uuid.uuid4()),
+        "event_id": registration.event_id,
+        "user_email": registration.user_email,
+        "user_name": registration.user_name,
+        "user_phone": registration.user_phone,
+        "bib_number": f"BIB{str(uuid.uuid4())[:8].upper()}",
+        "status": "confirmed"
+    }
+    
+    reg_obj = Registration(**reg_data)
+    doc = reg_obj.model_dump()
+    doc['registration_date'] = doc['registration_date'].isoformat()
+    
+    await db.registrations.insert_one(doc)
+    
+    return {"message": "Registration created successfully", "registration": reg_obj}
+
+@api_router.delete("/admin/registrations/{registration_id}")
+async def delete_registration(registration_id: str):
+    result = await db.registrations.delete_one({"id": registration_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    return {"message": "Registration deleted successfully"}
+
+@api_router.delete("/admin/transactions/{transaction_id}")
+async def delete_transaction(transaction_id: str):
+    result = await db.payment_transactions.delete_one({"id": transaction_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    return {"message": "Transaction deleted successfully"}
+
+@api_router.put("/admin/registrations/{registration_id}")
+async def update_registration(registration_id: str, update_data: dict):
+    result = await db.registrations.update_one(
+        {"id": registration_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    return {"message": "Registration updated successfully"}
+
 # Include the router in the main app
 app.include_router(api_router)
 

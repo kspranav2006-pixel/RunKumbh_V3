@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock, Trophy } from "lucide-react";
+import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock, Trophy, Trash2, Plus, Edit2 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -757,6 +757,13 @@ function AdminPage({ toast }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ total_registrations: 0, total_transactions: 0 });
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newRegistration, setNewRegistration] = useState({
+    event_id: '',
+    user_name: '',
+    user_email: '',
+    user_phone: ''
+  });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -818,6 +825,89 @@ function AdminPage({ toast }) {
   const getEventName = (eventId) => {
     const event = events.find(e => e.id === eventId);
     return event ? event.title : eventId;
+  };
+
+  const handleDeleteRegistration = async (registrationId) => {
+    if (!window.confirm('Are you sure you want to delete this registration?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/admin/registrations/${registrationId}`);
+      toast({
+        title: 'Registration Deleted',
+        description: 'Registration has been removed successfully',
+      });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete registration',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/admin/transactions/${transactionId}`);
+      toast({
+        title: 'Transaction Deleted',
+        description: 'Transaction has been removed successfully',
+      });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete transaction',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleAddRegistration = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await axios.post(`${API}/admin/registrations`, newRegistration);
+      toast({
+        title: 'Registration Added!',
+        description: 'New registration created successfully',
+      });
+      setShowAddDialog(false);
+      setNewRegistration({ event_id: '', user_name: '', user_email: '', user_phone: '' });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to add registration',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (registrationId, newStatus) => {
+    try {
+      await axios.put(`${API}/admin/registrations/${registrationId}`, { status: newStatus });
+      toast({
+        title: 'Status Updated',
+        description: 'Registration status has been updated',
+      });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update status',
+        variant: 'destructive'
+      });
+    }
   };
 
   if (!isAuthenticated) {
@@ -898,8 +988,70 @@ function AdminPage({ toast }) {
 
         {/* Registrations Table */}
         <Card className="card-modern mb-8">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-2xl">Confirmed Registrations</CardTitle>
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-primary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Registration
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Registration</DialogTitle>
+                  <DialogDescription>Manually create a registration</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddRegistration} className="space-y-4">
+                  <div>
+                    <Label htmlFor="event">Event</Label>
+                    <select
+                      id="event"
+                      className="w-full p-2 border rounded"
+                      value={newRegistration.event_id}
+                      onChange={(e) => setNewRegistration({...newRegistration, event_id: e.target.value})}
+                      required
+                    >
+                      <option value="">Select Event</option>
+                      {events.map(event => (
+                        <option key={event.id} value={event.id}>{event.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="add_name">Name</Label>
+                    <Input
+                      id="add_name"
+                      value={newRegistration.user_name}
+                      onChange={(e) => setNewRegistration({...newRegistration, user_name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="add_email">Email</Label>
+                    <Input
+                      id="add_email"
+                      type="email"
+                      value={newRegistration.user_email}
+                      onChange={(e) => setNewRegistration({...newRegistration, user_email: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="add_phone">Phone</Label>
+                    <Input
+                      id="add_phone"
+                      value={newRegistration.user_phone}
+                      onChange={(e) => setNewRegistration({...newRegistration, user_phone: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-gradient-primary" disabled={loading}>
+                    {loading ? 'Adding...' : 'Add Registration'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -912,6 +1064,7 @@ function AdminPage({ toast }) {
                     <th className="text-left p-3 font-semibold">Phone</th>
                     <th className="text-left p-3 font-semibold">Event</th>
                     <th className="text-left p-3 font-semibold">Status</th>
+                    <th className="text-left p-3 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -923,9 +1076,25 @@ function AdminPage({ toast }) {
                       <td className="p-3">{reg.user_phone}</td>
                       <td className="p-3">{getEventName(reg.event_id)}</td>
                       <td className="p-3">
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                          {reg.status}
-                        </span>
+                        <select
+                          value={reg.status}
+                          onChange={(e) => handleUpdateStatus(reg.id, e.target.value)}
+                          className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm border-none"
+                        >
+                          <option value="confirmed">confirmed</option>
+                          <option value="pending">pending</option>
+                          <option value="cancelled">cancelled</option>
+                        </select>
+                      </td>
+                      <td className="p-3">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteRegistration(reg.id)}
+                          className="bg-red-500 hover:bg-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -954,6 +1123,7 @@ function AdminPage({ toast }) {
                     <th className="text-left p-3 font-semibold">Amount</th>
                     <th className="text-left p-3 font-semibold">Event</th>
                     <th className="text-left p-3 font-semibold">Payment Status</th>
+                    <th className="text-left p-3 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -972,6 +1142,16 @@ function AdminPage({ toast }) {
                         }`}>
                           {trans.payment_status}
                         </span>
+                      </td>
+                      <td className="p-3">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteTransaction(trans.id)}
+                          className="bg-red-500 hover:bg-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
