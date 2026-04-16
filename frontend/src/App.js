@@ -91,6 +91,7 @@ function App() {
               toast={toast}
             />
           } />
+          <Route path="/admin" element={<AdminPage toast={toast} />} />
         </Routes>
       </div>
     </BrowserRouter>
@@ -745,6 +746,245 @@ function Footer({ scrollToSection }) {
         </div>
       </div>
     </footer>
+  );
+}
+
+function AdminPage({ toast }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [registrations, setRegistrations] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ total_registrations: 0, total_transactions: 0 });
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${API}/admin/login`, { password });
+      localStorage.setItem('admin_token', response.data.token);
+      setIsAuthenticated(true);
+      toast({
+        title: 'Login Successful!',
+        description: 'Welcome to admin dashboard',
+      });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Login Failed',
+        description: 'Invalid password',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRegistrations = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/registrations`);
+      setRegistrations(response.data.registrations);
+      setTransactions(response.data.transactions);
+      setEvents(response.data.events);
+      setStats({
+        total_registrations: response.data.total_registrations,
+        total_transactions: response.data.total_transactions
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch registrations',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      setIsAuthenticated(true);
+      fetchRegistrations();
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    setIsAuthenticated(false);
+    setPassword('');
+  };
+
+  const getEventName = (eventId) => {
+    const event = events.find(e => e.id === eventId);
+    return event ? event.title : eventId;
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-3xl text-center">Admin Login</CardTitle>
+            <CardDescription className="text-center">Enter password to access registrations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter admin password"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-primary"
+                disabled={loading}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-light p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-2">RunKumbh Registrations & BIB Numbers</p>
+          </div>
+          <Button onClick={handleLogout} variant="outline">
+            Logout
+          </Button>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle>Total Registrations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-gradient">{stats.total_registrations}</p>
+            </CardContent>
+          </Card>
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle>Total Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-gradient">{stats.total_transactions}</p>
+            </CardContent>
+          </Card>
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle>Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-gradient">{events.length}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Registrations Table */}
+        <Card className="card-modern mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl">Confirmed Registrations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-semibold">BIB Number</th>
+                    <th className="text-left p-3 font-semibold">Name</th>
+                    <th className="text-left p-3 font-semibold">Email</th>
+                    <th className="text-left p-3 font-semibold">Phone</th>
+                    <th className="text-left p-3 font-semibold">Event</th>
+                    <th className="text-left p-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registrations.map((reg, index) => (
+                    <tr key={index} className="border-b hover:bg-teal-50">
+                      <td className="p-3 font-bold text-teal-600">{reg.bib_number}</td>
+                      <td className="p-3">{reg.user_name}</td>
+                      <td className="p-3">{reg.user_email}</td>
+                      <td className="p-3">{reg.user_phone}</td>
+                      <td className="p-3">{getEventName(reg.event_id)}</td>
+                      <td className="p-3">
+                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                          {reg.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {registrations.length === 0 && (
+                <p className="text-center text-gray-500 py-8">No registrations yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Transactions Table */}
+        <Card className="card-modern">
+          <CardHeader>
+            <CardTitle className="text-2xl">Payment Transactions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-semibold">BIB Number</th>
+                    <th className="text-left p-3 font-semibold">Name</th>
+                    <th className="text-left p-3 font-semibold">Email</th>
+                    <th className="text-left p-3 font-semibold">Amount</th>
+                    <th className="text-left p-3 font-semibold">Event</th>
+                    <th className="text-left p-3 font-semibold">Payment Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((trans, index) => (
+                    <tr key={index} className="border-b hover:bg-orange-50">
+                      <td className="p-3 font-bold text-orange-600">{trans.bib_number}</td>
+                      <td className="p-3">{trans.user_name}</td>
+                      <td className="p-3">{trans.user_email}</td>
+                      <td className="p-3">₹{trans.amount}</td>
+                      <td className="p-3">{getEventName(trans.event_id)}</td>
+                      <td className="p-3">
+                        <span className={`px-3 py-1 rounded-full text-sm ${
+                          trans.payment_status === 'paid' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {trans.payment_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {transactions.length === 0 && (
+                <p className="text-center text-gray-500 py-8">No transactions yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 

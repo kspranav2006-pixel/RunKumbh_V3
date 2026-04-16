@@ -451,6 +451,48 @@ async def stripe_webhook(request: Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# Admin Routes
+class AdminLogin(BaseModel):
+    password: str
+
+@api_router.post("/admin/login")
+async def admin_login(credentials: AdminLogin):
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'RunKumbh2026Admin')
+    
+    if credentials.password == admin_password:
+        # Create a simple admin token
+        token = create_access_token({"sub": "admin", "role": "admin"})
+        return {"token": token, "message": "Login successful"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+@api_router.get("/admin/registrations")
+async def get_all_registrations():
+    # Get all registrations
+    registrations = await db.registrations.find({}, {"_id": 0}).to_list(10000)
+    for reg in registrations:
+        if isinstance(reg.get('registration_date'), str):
+            reg['registration_date'] = datetime.fromisoformat(reg['registration_date'])
+    
+    # Get all payment transactions
+    transactions = await db.payment_transactions.find({}, {"_id": 0}).to_list(10000)
+    for trans in transactions:
+        if isinstance(trans.get('created_at'), str):
+            trans['created_at'] = datetime.fromisoformat(trans['created_at'])
+        if isinstance(trans.get('updated_at'), str):
+            trans['updated_at'] = datetime.fromisoformat(trans['updated_at'])
+    
+    # Get events for reference
+    events = await db.events.find({}, {"_id": 0}).to_list(1000)
+    
+    return {
+        "registrations": registrations,
+        "transactions": transactions,
+        "events": events,
+        "total_registrations": len(registrations),
+        "total_transactions": len(transactions)
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
