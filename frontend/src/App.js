@@ -13,7 +13,7 @@ import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock, Tro
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const EVENT_DATE = new Date('2026-05-30T06:30:00');
+const EVENT_DATE = new Date('2026-05-30T00:00:00');
 
 function App() {
   const [events, setEvents] = useState([]);
@@ -299,7 +299,7 @@ function AboutSection() {
             RV Institute of Technology and Management
           </p>
           <p className="text-lg text-gray-600 mt-2">
-            India's premier monsoon running event
+            monsoon running event
           </p>
         </div>
 
@@ -401,11 +401,11 @@ function EventsSection({ events, toast }) {
                 </li>
                 <li className="flex items-start text-gray-700">
                   <span className="mr-3 text-2xl">🏆</span>
-                  <span>Cash prizes for 5K categories*</span>
+                  <span>*CASH PRIZE ONLY FOR 5K CATEGORIES*</span>
                 </li>
                 <li className="flex items-start text-gray-700">
-                  <span className="mr-3 text-2xl">📸</span>
-                  <span>Professional event photography</span>
+                  <span className="mr-3 text-2xl">💰</span>
+                  <span>Total Cash Prize Of ₹30,000</span>
                 </li>
                 <li className="flex items-start text-gray-700">
                   <span className="mr-3 text-2xl">🚑</span>
