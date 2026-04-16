@@ -1,12 +1,12 @@
-/* Fresh Rain + Warm Earth Theme - Monsoon & Summer */
+/* Ocean Breeze + Sunset Glow Theme */
 
 /* Custom Cursor */
 * {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2314B8A6" stroke-width="2"><circle cx="12" cy="12" r="10" fill="%2314B8A6" opacity="0.3"/><path d="M12 2 L12 22 M2 12 L22 12"/></svg>'), auto;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%230D7377" stroke-width="2"><circle cx="12" cy="12" r="10" fill="%230D7377" opacity="0.3"/><path d="M12 2 L12 22 M2 12 L22 12"/></svg>'), auto;
 }
 
 button, a, input, textarea {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%2314B8A6"><circle cx="12" cy="12" r="8"/></svg>'), pointer;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%230D7377"><circle cx="12" cy="12" r="8"/></svg>'), pointer;
 }
 
 /* Hide Watermark */
@@ -27,15 +27,15 @@ button[style*="position: fixed"][style*="bottom"][style*="right"] {
 
 /* Global Styles */
 body {
-  background: linear-gradient(135deg, #CCFBF1 0%, #FFFFFF 50%, #FED7AA 100%) !important;
+  background: linear-gradient(135deg, #F8F4EA 0%, #0D7377 50%, #FF6B6B 100%) !important;
   min-height: 100vh;
 }
 
-/* Smooth Animations */
+/* Interactive Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -46,7 +46,7 @@ body {
 @keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-50px);
+    transform: translateX(-80px);
   }
   to {
     opacity: 1;
@@ -57,7 +57,7 @@ body {
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(50px);
+    transform: translateX(80px);
   }
   to {
     opacity: 1;
@@ -67,21 +67,21 @@ body {
 
 @keyframes float {
   0%, 100% {
-    transform: translateY(0);
+    transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-15px) rotate(5deg);
   }
 }
 
 @keyframes pulse {
   0%, 100% {
     transform: scale(1);
-    opacity: 1;
+    box-shadow: 0 0 20px rgba(13, 115, 119, 0.5);
   }
   50% {
-    transform: scale(1.05);
-    opacity: 0.9;
+    transform: scale(1.08);
+    box-shadow: 0 0 40px rgba(255, 107, 107, 0.8);
   }
 }
 
@@ -94,17 +94,48 @@ body {
   }
 }
 
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(13, 115, 119, 0.4),
+                0 0 40px rgba(255, 107, 107, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(13, 115, 119, 0.6),
+                0 0 80px rgba(255, 107, 107, 0.5);
+  }
+}
+
 /* Utility Classes */
 .animate-fadeIn {
   animation: fadeIn 0.8s ease-out forwards;
 }
 
 .animate-slideInLeft {
-  animation: slideInLeft 0.8s ease-out forwards;
+  animation: slideInLeft 1s ease-out forwards;
 }
 
 .animate-slideInRight {
-  animation: slideInRight 0.8s ease-out forwards;
+  animation: slideInRight 1s ease-out forwards;
 }
 
 .animate-float {
@@ -113,6 +144,10 @@ body {
 
 .animate-pulse {
   animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-bounce {
+  animation: bounce 2s ease-in-out infinite;
 }
 
 .delay-100 {
@@ -135,39 +170,97 @@ body {
   opacity: 0;
 }
 
-/* Card Effects */
+.delay-500 {
+  animation-delay: 0.5s;
+  opacity: 0;
+}
+
+/* Interactive Card Effects */
 .card-modern {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   background: rgba(255, 255, 255, 0.95);
   border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-modern::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(13, 115, 119, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s;
+}
+
+.card-modern:hover::before {
+  left: 100%;
 }
 
 .card-modern:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(20, 184, 166, 0.2);
-  border-color: #14B8A6;
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(13, 115, 119, 0.3),
+              0 0 30px rgba(255, 107, 107, 0.2);
+  border-color: #0D7377;
+}
+
+/* Button Interactions */
+button, .button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+button:hover::after {
+  width: 300px;
+  height: 300px;
+}
+
+button:active {
+  transform: scale(0.95);
 }
 
 /* Gradient Backgrounds */
 .bg-gradient-primary {
-  background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+  background: linear-gradient(135deg, #0D7377 0%, #14919B 100%);
 }
 
 .bg-gradient-secondary {
-  background: linear-gradient(135deg, #EA580C 0%, #DC2626 100%);
+  background: linear-gradient(135deg, #FF6B6B 0%, #FF8787 100%);
 }
 
 .bg-gradient-light {
-  background: linear-gradient(135deg, #CCFBF1 0%, #F0FDFA 100%);
+  background: linear-gradient(135deg, #F8F4EA 0%, #FFF9F0 100%);
 }
 
-.bg-gradient-warm {
-  background: linear-gradient(135deg, #FED7AA 0%, #FDBA74 100%);
+.bg-gradient-ocean {
+  background: linear-gradient(135deg, #0D7377 0%, #14919B 50%, #FF6B6B 100%);
 }
 
 /* Text Gradients */
 .text-gradient {
-  background: linear-gradient(135deg, #14B8A6 0%, #EA580C 100%);
+  background: linear-gradient(135deg, #0D7377 0%, #FF6B6B 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -175,14 +268,47 @@ body {
 
 /* Shimmer Effect */
 .shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(20, 184, 166, 0.3) 50%,
+    rgba(255, 255, 255, 0.4) 50%,
     transparent 100%
   );
-  background-size: 2000px 100%;
-  animation: shimmer 3s infinite;
+  animation: shimmer 2s infinite;
+}
+
+/* Interactive Glow */
+.glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Ripple Effect */
+.ripple {
+  position: relative;
+}
+
+.ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #0D7377;
+  border-radius: inherit;
+  transform: translate(-50%, -50%);
+  animation: ripple 2s infinite;
 }
 
 /* Smooth Scrolling */
@@ -192,27 +318,50 @@ html {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 14px;
 }
 
 ::-webkit-scrollbar-track {
-  background: linear-gradient(180deg, #CCFBF1, #FED7AA);
-  border-radius: 6px;
+  background: linear-gradient(180deg, #F8F4EA, #0D7377);
+  border-radius: 7px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #14B8A6, #EA580C);
-  border-radius: 6px;
+  background: linear-gradient(180deg, #0D7377, #FF6B6B);
+  border-radius: 7px;
   border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #0D9488, #DC2626);
+  background: linear-gradient(180deg, #14919B, #FF8787);
+}
+
+/* Icon Interactions */
+.icon-interactive {
+  transition: all 0.3s;
+}
+
+.icon-interactive:hover {
+  transform: scale(1.2) rotate(10deg);
+  filter: drop-shadow(0 5px 15px rgba(13, 115, 119, 0.5));
+}
+
+/* Section Backgrounds */
+.section-cream {
+  background: linear-gradient(135deg, #F8F4EA 0%, #FFF9F0 100%);
+}
+
+.section-teal {
+  background: linear-gradient(135deg, #0D7377 0%, #14919B 100%);
+}
+
+.section-coral {
+  background: linear-gradient(135deg, #FFB8B8 0%, #FFDEDE 100%);
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .card-modern:hover {
-    transform: translateY(-5px);
+    transform: translateY(-8px) scale(1.01);
   }
 }

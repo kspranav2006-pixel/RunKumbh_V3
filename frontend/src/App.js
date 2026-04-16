@@ -9,11 +9,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock } from "lucide-react";
+import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock, Trophy } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const EVENT_DATE = new Date('2026-06-21T06:30:00');
+const EVENT_DATE = new Date('2026-05-30T06:30:00');
 
 function App() {
   const [events, setEvents] = useState([]);
@@ -258,7 +258,7 @@ function CountdownSection() {
             <Clock className="w-10 h-10" />
             Event Countdown
           </h2>
-          <p className="text-white text-lg">June 21, 2026 - Get Ready!</p>
+          <p className="text-white text-lg">May 30, 2026 - Get Ready!</p>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
@@ -289,7 +289,7 @@ function AboutSection() {
   ];
 
   return (
-    <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-light">
+    <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 section-cream">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4 animate-fadeIn">
@@ -358,7 +358,7 @@ function EventsSection({ events, toast }) {
   };
 
   return (
-    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-warm">
+    <section id="events" className="py-20 px-4 sm:px-6 lg:px-8 section-coral">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">
@@ -373,6 +373,52 @@ function EventsSection({ events, toast }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Event Details & Perks Card */}
+          <Card className="card-modern animate-fadeIn" style={{border: '4px solid #0D7377'}}>
+            <CardHeader className="bg-gradient-ocean text-white">
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Trophy className="w-8 h-8 animate-bounce" />
+                Event Details & Perks
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <ul className="space-y-3">
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">🏅</span>
+                  <span>Finisher Medal for all participants</span>
+                </li>
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">📜</span>
+                  <span>Certificate of participation</span>
+                </li>
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">👕</span>
+                  <span>Event T-Shirt</span>
+                </li>
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">🥤</span>
+                  <span>Refreshments & Water stations</span>
+                </li>
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">🏆</span>
+                  <span>Cash prizes for 5K categories*</span>
+                </li>
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">📸</span>
+                  <span>Professional event photography</span>
+                </li>
+                <li className="flex items-start text-gray-700">
+                  <span className="mr-3 text-2xl">🚑</span>
+                  <span>Medical support throughout</span>
+                </li>
+              </ul>
+              <p className="text-sm text-coral-600 mt-6 font-semibold bg-yellow-50 p-3 rounded-lg border-l-4 border-coral-500">
+                *Cash prize applicable for 5K categories with minimum 50 participants per gender
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Event Cards */}
           {events.map((event, index) => (
             <Card key={event.id} className="card-modern animate-fadeIn" style={{animationDelay: `${index * 0.1}s`, opacity: 0}}>
               <div className="relative h-48 overflow-hidden rounded-t-lg">
@@ -474,7 +520,7 @@ function EventsSection({ events, toast }) {
 
 function RouteMapSection() {
   return (
-    <section id="routemap" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-light">
+    <section id="routemap" className="py-20 px-4 sm:px-6 lg:px-8 section-cream">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">
@@ -546,7 +592,7 @@ function RulesSection() {
   ];
 
   return (
-    <section id="rules" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-warm">
+    <section id="rules" className="py-20 px-4 sm:px-6 lg:px-8 section-coral">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">
@@ -588,7 +634,7 @@ function RulesSection() {
 
 function ContactSection() {
   return (
-    <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-light">
+    <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 section-cream">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">
