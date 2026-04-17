@@ -215,7 +215,7 @@ function HeroSection({ scrollToSection }) {
         </p>
         
         <p className="text-xl text-white mb-8 animate-fadeIn delay-300">
-          <span className="font-bold text-2xl">RV Institute of Technology and Manag nt</span>
+          <span className="font-bold text-2xl">RV Institute of Technology and Management</span>
           <br />National Cadet Corps 
         </p>
         
@@ -312,7 +312,7 @@ function AboutSection() {
     {
       icon: <Wallet className="w-12 h-12 text-orange-600" />,
       title: 'Prize Money',
-      description: 'The Total Prize pool for this event is ₹30000.Important Note-*CASH PRIZE ONLY FOR 5K CATEGORIES*'
+      description: 'The Total Prize pool for this event is ₹30000. Important Note-*CASH PRIZE ONLY FOR 5K CATEGORIES*'
     }
   ];
 
@@ -351,7 +351,6 @@ function AboutSection() {
     </section>
   );
 }
-
 
 function EventsSection({ events, toast }) {
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -431,12 +430,8 @@ function EventsSection({ events, toast }) {
                   <span>Refreshments & Water stations</span>
                 </li>
                 <li className="flex items-start text-gray-700">
-                  <span className="mr-3 text-2xl">🏆</span>
-                  <span>*CASH PRIZE ONLY FOR 5K CATEGORIES*</span>
-                </li>
-                <li className="flex items-start text-gray-700">
                   <span className="mr-3 text-2xl">💰</span>
-                  <span>Total Cash Prize Of ₹30,000</span>
+                  <span>Total Cash Prize Of ₹45,000</span>
                 </li>
                 <li className="flex items-start text-gray-700">
                   <span className="mr-3 text-2xl">🚑</span>
@@ -444,7 +439,7 @@ function EventsSection({ events, toast }) {
                 </li>
               </ul>
               <p className="text-sm text-coral-600 mt-6 font-semibold bg-yellow-50 p-3 rounded-lg border-l-4 border-coral-500">
-                *Cash prize applicable for 5K categories with minimum 50 participants per gender
+                *Cash prize applicable for categories(Open Men & Women- 5K Run, Students/NCC/NSS- 5K Run, Students/Staff- 3K Run)
               </p>
             </CardContent>
           </Card>
@@ -571,7 +566,7 @@ function RouteMapSection() {
             <CardContent>
               <div className="rounded-lg overflow-hidden">
                 <img 
-                  src="https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/d5ncqxm5_Route-3k.png"
+                  src="https://lh3.googleusercontent.com/d/1457pNBVAoWXHY61-RSq2MeqM0iFOzH4j"
                   alt="3km Route Map"
                   className="w-full h-auto object-cover"
                 />
@@ -813,6 +808,20 @@ function AdminPage({ toast }) {
     user_phone: ''
   });
 
+  // ---- NEW: Event editing states ----
+  const [showEditEventDialog, setShowEditEventDialog] = useState(false);
+  const [selectedEditEvent, setSelectedEditEvent] = useState(null);
+  const [editEventData, setEditEventData] = useState({
+    title: '',
+    description: '',
+    registration_fee: '',
+    image_url: '',
+    location: '',
+    distance: '',
+    category: ''
+  });
+  // ---- END NEW ----
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -958,6 +967,47 @@ function AdminPage({ toast }) {
     }
   };
 
+  // ---- NEW: Event edit handlers ----
+  const handleEditEvent = (event) => {
+    setSelectedEditEvent(event);
+    setEditEventData({
+      title: event.title,
+      description: event.description,
+      registration_fee: event.registration_fee,
+      image_url: event.image_url,
+      location: event.location,
+      distance: event.distance,
+      category: event.category
+    });
+    setShowEditEventDialog(true);
+  };
+
+  const handleUpdateEvent = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.put(`${API}/admin/events/${selectedEditEvent.id}`, {
+        ...editEventData,
+        registration_fee: parseFloat(editEventData.registration_fee)
+      });
+      toast({
+        title: 'Event Updated!',
+        description: 'Event details have been updated successfully',
+      });
+      setShowEditEventDialog(false);
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update event',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ---- END NEW ----
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
@@ -1033,6 +1083,143 @@ function AdminPage({ toast }) {
             </CardContent>
           </Card>
         </div>
+
+        {/* ---- NEW: Manage Events Card ---- */}
+        <Card className="card-modern mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl">Manage Events</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-semibold">Image</th>
+                    <th className="text-left p-3 font-semibold">Title</th>
+                    <th className="text-left p-3 font-semibold">Category</th>
+                    <th className="text-left p-3 font-semibold">Distance</th>
+                    <th className="text-left p-3 font-semibold">Price</th>
+                    <th className="text-left p-3 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((event, index) => (
+                    <tr key={index} className="border-b hover:bg-teal-50">
+                      <td className="p-3">
+                        <img
+                          src={event.image_url}
+                          alt={event.title}
+                          className="w-16 h-16 object-cover rounded-lg"
+                        />
+                      </td>
+                      <td className="p-3 font-semibold">{event.title}</td>
+                      <td className="p-3">{event.category}</td>
+                      <td className="p-3">{event.distance}</td>
+                      <td className="p-3 font-bold text-teal-600">₹{event.registration_fee}</td>
+                      <td className="p-3">
+                        <Button
+                          size="sm"
+                          className="bg-gradient-primary"
+                          onClick={() => handleEditEvent(event)}
+                        >
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Edit Event Dialog */}
+        <Dialog open={showEditEventDialog} onOpenChange={setShowEditEventDialog}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Event</DialogTitle>
+              <DialogDescription>Update event details below</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateEvent} className="space-y-4">
+              <div>
+                <Label>Title</Label>
+                <Input
+                  value={editEventData.title}
+                  onChange={(e) => setEditEventData({...editEventData, title: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <textarea
+                  className="w-full p-2 border rounded min-h-[100px] text-sm"
+                  value={editEventData.description}
+                  onChange={(e) => setEditEventData({...editEventData, description: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Price (₹)</Label>
+                <Input
+                  type="number"
+                  value={editEventData.registration_fee}
+                  onChange={(e) => setEditEventData({...editEventData, registration_fee: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Image URL</Label>
+                <Input
+                  value={editEventData.image_url}
+                  onChange={(e) => setEditEventData({...editEventData, image_url: e.target.value})}
+                  required
+                />
+                {editEventData.image_url && (
+                  <img
+                    src={editEventData.image_url}
+                    alt="Preview"
+                    className="mt-2 w-full h-32 object-cover rounded-lg"
+                  />
+                )}
+              </div>
+              <div>
+                <Label>Location</Label>
+                <Input
+                  value={editEventData.location}
+                  onChange={(e) => setEditEventData({...editEventData, location: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Distance</Label>
+                  <Input
+                    value={editEventData.distance}
+                    onChange={(e) => setEditEventData({...editEventData, distance: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Category</Label>
+                  <Input
+                    value={editEventData.category}
+                    onChange={(e) => setEditEventData({...editEventData, category: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-primary text-lg py-6"
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+        {/* ---- END NEW ---- */}
 
         {/* Registrations Table */}
         <Card className="card-modern mb-8">

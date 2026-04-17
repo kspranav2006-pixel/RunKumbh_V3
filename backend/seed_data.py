@@ -26,13 +26,13 @@ async def seed_database():
         {
             "id": str(uuid.uuid4()),
             "title": "Open Men & Women - 5K Run",
-            "description": "Run Kumbha – Monsoon Run 2.0 🌧️ Open category for all participants. Minimum 50 participants required. Includes Medal, Certificate, Refreshments & T-Shirt. Compete for ₹30,000 total cash prize!",
+            "description": "Run Kumbha – Monsoon Run 2.0 🌧️ Open category for all participants. Minimum 50 participants required. Includes Medal, Certificate, Refreshments & T-Shirt. Compete for ₹12,000 total cash prize!",
             "date": "2026-05-30",
             "location": "RV Institute of Technology and Management, Bengaluru",
             "distance": "5 km",
             "category": "Open 5K",
             "max_participants": 500,
-            "image_url": "https://images.unsplash.com/photo-1452626038306-9aae5e071dd3",
+            "image_url": "https://lh3.googleusercontent.com/d/1457pNBVAoWXHY61-RSq2MeqM0iFOzH4j",
             "registration_fee": 499.00,
             "created_at": datetime.now(timezone.utc).isoformat()
         },

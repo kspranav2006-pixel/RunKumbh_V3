@@ -571,3 +571,10 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+@app.put("/api/admin/events/{event_id}")
+async def update_event(event_id: str, event_data: dict):
+    await db.events.update_one(
+        {"id": event_id},
+        {"$set": event_data}
+    )
+    return {"message": "Event updated successfully"}
