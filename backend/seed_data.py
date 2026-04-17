@@ -21,45 +21,58 @@ async def seed_database():
     await db.events.delete_many({})
     await db.gallery.delete_many({})
     
-    # Seed RUN KUMBHA - MONSOON RUN 2.0 Events
+    # Seed RUN KUMBHA - MONSOON RUN 2.0 Events with new structure
     events = [
         {
             "id": str(uuid.uuid4()),
             "title": "Open Men & Women - 5K Run",
-            "description": "Run Kumbha – Monsoon Run 2.0 🌧️ Open category for all participants. Minimum 50 participants required. Includes Medal, Certificate, Refreshments & T-Shirt. Compete for ₹12,000 total cash prize!",
+            "description": "Open category for all participants. Cash Prize: ₹24,000 total (₹12,000 per gender). 1st: ₹6,000, 2nd: ₹4,000, 3rd: ₹2,000. Medal, Certificate, T-Shirt & Refreshments included. Minimum 50 participants required.",
             "date": "2026-05-30",
             "location": "RV Institute of Technology and Management, Bengaluru",
             "distance": "5 km",
             "category": "Open 5K",
             "max_participants": 500,
-            "image_url": "https://lh3.googleusercontent.com/d/1457pNBVAoWXHY61-RSq2MeqM0iFOzH4j",
+            "image_url": "https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/y8amsyy0_Open%205k%20run%20photo.jpg",
             "registration_fee": 499.00,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
             "id": str(uuid.uuid4()),
             "title": "Students / NCC / NSS - 5K Run",
-            "description": "Special category for Students, NCC & NSS members. Minimum 50 participants required per gender. Run for glory with your peers! Medal, Certificate, Refreshments & T-Shirt included.",
+            "description": "Special category for Students, NCC & NSS members. Run for glory with your peers! Medal, Certificate, T-Shirt & Refreshments included.",
             "date": "2026-05-30",
             "location": "RV Institute of Technology and Management, Bengaluru",
             "distance": "5 km",
             "category": "Students 5K",
             "max_participants": 400,
-            "image_url": "https://images.pexels.com/photos/2402777/pexels-photo-2402777.jpeg",
+            "image_url": "https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/vlvsoozd_Students%205k%20run%20photo.JPG",
             "registration_fee": 349.00,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
             "id": str(uuid.uuid4()),
-            "title": "Students / Staff - 3K Run",
-            "description": "For Students, NCC, NSS, NCMC & RVITM Staff members. A refreshing 3K monsoon run with full event perks including Medal, Certificate, T-Shirt & Refreshments.",
+            "title": "Students / NCC / NSS / NCMC - 3K Run",
+            "description": "For Students, NCC, NSS & NCMC members. Cash Prize: ₹10,000 total (₹5,000 per gender). 1st: ₹2,500, 2nd: ₹1,500, 3rd: ₹1,000. Medal, Certificate, T-Shirt & Refreshments. Minimum 50 participants both genders required.",
             "date": "2026-05-30",
             "location": "RV Institute of Technology and Management, Bengaluru",
             "distance": "3 km",
-            "category": "Campus 3K",
+            "category": "Students 3K",
             "max_participants": 300,
-            "image_url": "https://images.unsplash.com/photo-1530143311094-34d807799e8f",
+            "image_url": "https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/pn5bh5iz_Students%203k%20run%20photo.jpg",
             "registration_fee": 349.00,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "title": "RVITM Staff - 3K Run",
+            "description": "Exclusive for RVITM Staff members. Cash Prize: ₹10,000 total (₹5,000 per gender). 1st: ₹2,500, 2nd: ₹1,500, 3rd: ₹1,000. Medal, Certificate, T-Shirt & Refreshments. Minimum 25 participants both genders required.",
+            "date": "2026-05-30",
+            "location": "RV Institute of Technology and Management, Bengaluru",
+            "distance": "3 km",
+            "category": "Staff 3K",
+            "max_participants": 100,
+            "image_url": "https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/ao4dqjfy_Staff%203k%20run%20photo.JPG",
+            "registration_fee": 299.00,
             "created_at": datetime.now(timezone.utc).isoformat()
         },
         {
@@ -71,7 +84,7 @@ async def seed_database():
             "distance": "3 km",
             "category": "Family 3K",
             "max_participants": 200,
-            "image_url": "https://images.unsplash.com/photo-1695655300485-d3da8bc72076",
+            "image_url": "https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/t2rufgh6_family%20run%203k%20photo.webp",
             "registration_fee": 999.00,
             "created_at": datetime.now(timezone.utc).isoformat()
         },

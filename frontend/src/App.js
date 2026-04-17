@@ -312,7 +312,7 @@ function AboutSection() {
     {
       icon: <Wallet className="w-12 h-12 text-orange-600" />,
       title: 'Prize Money',
-      description: 'The Total Prize pool for this event is ₹30000. Important Note-*CASH PRIZE ONLY FOR 5K CATEGORIES*'
+      description: 'The Total Prize pool for this event is ₹45000. Cash prizes for: Open 5K (₹24,000), Students 3K (₹10,000), and Staff 3K (₹10,000). Minimum participant requirements apply.'
     }
   ];
 
@@ -808,8 +808,8 @@ function AdminPage({ toast }) {
     user_phone: ''
   });
 
-  // ---- NEW: Event editing states ----
   const [showEditEventDialog, setShowEditEventDialog] = useState(false);
+  const [showAddEventDialog, setShowAddEventDialog] = useState(false);
   const [selectedEditEvent, setSelectedEditEvent] = useState(null);
   const [editEventData, setEditEventData] = useState({
     title: '',
@@ -818,9 +818,20 @@ function AdminPage({ toast }) {
     image_url: '',
     location: '',
     distance: '',
-    category: ''
+    category: '',
+    max_participants: ''
   });
-  // ---- END NEW ----
+  const [newEventData, setNewEventData] = useState({
+    title: '',
+    description: '',
+    date: '2026-05-30',
+    location: 'RV Institute of Technology and Management, Bengaluru',
+    distance: '',
+    category: '',
+    max_participants: '',
+    image_url: '',
+    registration_fee: ''
+  });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -967,7 +978,6 @@ function AdminPage({ toast }) {
     }
   };
 
-  // ---- NEW: Event edit handlers ----
   const handleEditEvent = (event) => {
     setSelectedEditEvent(event);
     setEditEventData({
@@ -977,7 +987,8 @@ function AdminPage({ toast }) {
       image_url: event.image_url,
       location: event.location,
       distance: event.distance,
-      category: event.category
+      category: event.category,
+      max_participants: event.max_participants
     });
     setShowEditEventDialog(true);
   };
@@ -988,7 +999,8 @@ function AdminPage({ toast }) {
     try {
       await axios.put(`${API}/admin/events/${selectedEditEvent.id}`, {
         ...editEventData,
-        registration_fee: parseFloat(editEventData.registration_fee)
+        registration_fee: parseFloat(editEventData.registration_fee),
+        max_participants: parseInt(editEventData.max_participants)
       });
       toast({
         title: 'Event Updated!',
@@ -1006,7 +1018,64 @@ function AdminPage({ toast }) {
       setLoading(false);
     }
   };
-  // ---- END NEW ----
+
+  const handleAddEvent = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post(`${API}/admin/events`, {
+        ...newEventData,
+        registration_fee: parseFloat(newEventData.registration_fee),
+        max_participants: parseInt(newEventData.max_participants)
+      });
+      toast({
+        title: 'Event Added!',
+        description: 'New event created successfully',
+      });
+      setShowAddEventDialog(false);
+      setNewEventData({
+        title: '',
+        description: '',
+        date: '2026-05-30',
+        location: 'RV Institute of Technology and Management, Bengaluru',
+        distance: '',
+        category: '',
+        max_participants: '',
+        image_url: '',
+        registration_fee: ''
+      });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to add event',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/admin/events/${eventId}`);
+      toast({
+        title: 'Event Deleted',
+        description: 'Event has been removed successfully',
+      });
+      fetchRegistrations();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete event',
+        variant: 'destructive'
+      });
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -1084,17 +1153,122 @@ function AdminPage({ toast }) {
           </Card>
         </div>
 
-        {/* ---- NEW: Manage Events Card ---- */}
+        {/* Manage Events Card — Image column removed so Actions is always visible */}
         <Card className="card-modern mb-8">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-2xl">Manage Events</CardTitle>
+            <Dialog open={showAddEventDialog} onOpenChange={setShowAddEventDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-primary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Event
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Event</DialogTitle>
+                  <DialogDescription>Create a new event category</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddEvent} className="space-y-4">
+                  <div>
+                    <Label>Title</Label>
+                    <Input
+                      value={newEventData.title}
+                      onChange={(e) => setNewEventData({...newEventData, title: e.target.value})}
+                      placeholder="E.g., Open Men & Women - 5K Run"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <textarea
+                      className="w-full p-2 border rounded min-h-[100px] text-sm"
+                      value={newEventData.description}
+                      onChange={(e) => setNewEventData({...newEventData, description: e.target.value})}
+                      placeholder="Include prize details and participant requirements"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Distance</Label>
+                      <Input
+                        value={newEventData.distance}
+                        onChange={(e) => setNewEventData({...newEventData, distance: e.target.value})}
+                        placeholder="E.g., 5 km"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Category</Label>
+                      <Input
+                        value={newEventData.category}
+                        onChange={(e) => setNewEventData({...newEventData, category: e.target.value})}
+                        placeholder="E.g., Open 5K"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Price (₹)</Label>
+                      <Input
+                        type="number"
+                        value={newEventData.registration_fee}
+                        onChange={(e) => setNewEventData({...newEventData, registration_fee: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Max Participants</Label>
+                      <Input
+                        type="number"
+                        value={newEventData.max_participants}
+                        onChange={(e) => setNewEventData({...newEventData, max_participants: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Location</Label>
+                    <Input
+                      value={newEventData.location}
+                      onChange={(e) => setNewEventData({...newEventData, location: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Image URL</Label>
+                    <Input
+                      value={newEventData.image_url}
+                      onChange={(e) => setNewEventData({...newEventData, image_url: e.target.value})}
+                      placeholder="https://..."
+                      required
+                    />
+                    {newEventData.image_url && (
+                      <img
+                        src={newEventData.image_url}
+                        alt="Preview"
+                        className="mt-2 w-full h-32 object-cover rounded-lg"
+                      />
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-primary text-lg py-6"
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating...' : 'Create Event'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-3 font-semibold">Image</th>
                     <th className="text-left p-3 font-semibold">Title</th>
                     <th className="text-left p-3 font-semibold">Category</th>
                     <th className="text-left p-3 font-semibold">Distance</th>
@@ -1105,18 +1279,11 @@ function AdminPage({ toast }) {
                 <tbody>
                   {events.map((event, index) => (
                     <tr key={index} className="border-b hover:bg-teal-50">
-                      <td className="p-3">
-                        <img
-                          src={event.image_url}
-                          alt={event.title}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                      </td>
                       <td className="p-3 font-semibold">{event.title}</td>
                       <td className="p-3">{event.category}</td>
                       <td className="p-3">{event.distance}</td>
                       <td className="p-3 font-bold text-teal-600">₹{event.registration_fee}</td>
-                      <td className="p-3">
+                      <td className="p-3 flex gap-2">
                         <Button
                           size="sm"
                           className="bg-gradient-primary"
@@ -1124,6 +1291,15 @@ function AdminPage({ toast }) {
                         >
                           <Edit2 className="w-4 h-4 mr-1" />
                           Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="bg-red-500 hover:bg-red-600"
+                          onClick={() => handleDeleteEvent(event.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
                         </Button>
                       </td>
                     </tr>
@@ -1209,6 +1385,15 @@ function AdminPage({ toast }) {
                   />
                 </div>
               </div>
+              <div>
+                <Label>Max Participants</Label>
+                <Input
+                  type="number"
+                  value={editEventData.max_participants}
+                  onChange={(e) => setEditEventData({...editEventData, max_participants: e.target.value})}
+                  required
+                />
+              </div>
               <Button
                 type="submit"
                 className="w-full bg-gradient-primary text-lg py-6"
@@ -1219,7 +1404,6 @@ function AdminPage({ toast }) {
             </form>
           </DialogContent>
         </Dialog>
-        {/* ---- END NEW ---- */}
 
         {/* Registrations Table */}
         <Card className="card-modern mb-8">
