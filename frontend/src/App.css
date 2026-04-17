@@ -14,8 +14,14 @@ button[title*="Made"],
 a[title*="Made"],
 div[title*="Made"],
 *[aria-label*="Made"],
-*[data-emergent],
-button:has(svg):last-child {
+*[data-emergent] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Hide Emergent watermark button specifically */
+button[style*="position: fixed"][style*="bottom"][style*="right"]:has(svg) {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
