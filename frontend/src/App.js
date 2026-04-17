@@ -1153,31 +1153,30 @@ function AdminPage({ toast }) {
           </Card>
         </div>
 
-        {/* Manage Events Card */}
-        <div className="flex flex-row items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Manage Events</h2>
-          <Button 
-            className="bg-gradient-primary whitespace-nowrap"
-            onClick={() => setShowAddEventDialog(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Event
-          </Button>
-        </div>
-        <Card className="card-modern mb-8">
-          <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-semibold">Title</th>
-                    <th className="text-left p-3 font-semibold">Category</th>
-                    <th className="text-left p-3 font-semibold">Distance</th>
-                    <th className="text-left p-3 font-semibold">Price</th>
-                    <th className="text-left p-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+        {/* Manage Events Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Manage Events</h2>
+            <button 
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+              onClick={() => setShowAddEventDialog(true)}
+            >
+              <Plus className="w-5 h-5" />
+              Add Event
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-gray-200">
+                  <th className="text-left p-4 font-semibold text-gray-700">Title</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Category</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Distance</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Price</th>
+                  <th className="text-left p-4 font-semibold text-gray-700 min-w-[220px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                   {events.map((event, index) => (
                     <tr key={index} className="border-b hover:bg-teal-50">
                       <td className="p-3 font-semibold">{event.title}</td>
@@ -1210,8 +1209,7 @@ function AdminPage({ toast }) {
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
         {/* Add Event Dialog */}
         <Dialog open={showAddEventDialog} onOpenChange={setShowAddEventDialog}>
@@ -1410,33 +1408,32 @@ function AdminPage({ toast }) {
           </DialogContent>
         </Dialog>
 
-        {/* Registrations Table */}
-        <div className="flex flex-row items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Confirmed Registrations</h2>
-          <Button 
-            className="bg-gradient-primary whitespace-nowrap"
-            onClick={() => setShowAddDialog(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Registration
-          </Button>
-        </div>
-        <Card className="card-modern mb-8">
-          <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-semibold">BIB Number</th>
-                    <th className="text-left p-3 font-semibold">Name</th>
-                    <th className="text-left p-3 font-semibold">Email</th>
-                    <th className="text-left p-3 font-semibold">Phone</th>
-                    <th className="text-left p-3 font-semibold">Event</th>
-                    <th className="text-left p-3 font-semibold">Status</th>
-                    <th className="text-left p-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+        {/* Registrations Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Confirmed Registrations</h2>
+            <button 
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+              onClick={() => setShowAddDialog(true)}
+            >
+              <Plus className="w-5 h-5" />
+              Add Registration
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-gray-200">
+                  <th className="text-left p-4 font-semibold text-gray-700">BIB Number</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Name</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Email</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Phone</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Event</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Status</th>
+                  <th className="text-left p-4 font-semibold text-gray-700 min-w-[120px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                   {registrations.map((reg, index) => (
                     <tr key={index} className="border-b hover:bg-teal-50">
                       <td className="p-3 font-bold text-teal-600">{reg.bib_number}</td>
@@ -1455,18 +1452,14 @@ function AdminPage({ toast }) {
                           <option value="cancelled">cancelled</option>
                         </select>
                       </td>
-                      <td className="p-3">
-                        <div className="min-w-[80px]">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteRegistration(reg.id)}
-                            className="bg-red-500 hover:bg-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
+                      <td className="p-4">
+                        <button
+                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          onClick={() => handleDeleteRegistration(reg.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1476,8 +1469,8 @@ function AdminPage({ toast }) {
                 <p className="text-center text-gray-500 py-8">No registrations yet</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Add Registration Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -1537,26 +1530,23 @@ function AdminPage({ toast }) {
           </DialogContent>
         </Dialog>
 
-        {/* Transactions Table */}
-        <Card className="card-modern">
-          <CardHeader>
-            <CardTitle className="text-2xl">Payment Transactions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-semibold">BIB Number</th>
-                    <th className="text-left p-3 font-semibold">Name</th>
-                    <th className="text-left p-3 font-semibold">Email</th>
-                    <th className="text-left p-3 font-semibold">Amount</th>
-                    <th className="text-left p-3 font-semibold">Event</th>
-                    <th className="text-left p-3 font-semibold">Payment Status</th>
-                    <th className="text-left p-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+        {/* Transactions Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Payment Transactions</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-gray-200">
+                  <th className="text-left p-4 font-semibold text-gray-700">BIB Number</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Name</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Email</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Amount</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Event</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Payment Status</th>
+                  <th className="text-left p-4 font-semibold text-gray-700 min-w-[120px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                   {transactions.map((trans, index) => (
                     <tr key={index} className="border-b hover:bg-orange-50">
                       <td className="p-3 font-bold text-orange-600">{trans.bib_number}</td>
@@ -1573,16 +1563,14 @@ function AdminPage({ toast }) {
                           {trans.payment_status}
                         </span>
                       </td>
-                      <td className="p-3">
-                        <Button
-                          variant="destructive"
-                          size="sm"
+                      <td className="p-4">
+                        <button
+                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
                           onClick={() => handleDeleteTransaction(trans.id)}
-                          className="bg-red-500 hover:bg-red-600"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
+                          <Trash2 className="w-4 h-4" />
                           Delete
-                        </Button>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1592,8 +1580,8 @@ function AdminPage({ toast }) {
                 <p className="text-center text-gray-500 py-8">No transactions yet</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
