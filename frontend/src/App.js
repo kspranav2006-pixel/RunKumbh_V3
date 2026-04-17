@@ -1469,7 +1469,6 @@ function AdminPage({ toast }) {
                 <p className="text-center text-gray-500 py-8">No registrations yet</p>
               )}
             </div>
-          </div>
         </div>
 
         {/* Add Registration Dialog */}
