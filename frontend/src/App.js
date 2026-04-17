@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock, Trophy, Trash2, Plus, Edit2 } from "lucide-react";
+import { Calendar, MapPin, Droplets, Sun, ArrowRight, Phone, Menu, X, Clock, Wallet, Trophy, Trash2, Plus, Edit2 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -178,9 +178,31 @@ function HeroSection({ scrollToSection }) {
       <div className="absolute inset-0 bg-gradient-to-br from-teal-600 via-teal-500 to-orange-500 opacity-90"></div>
 
       <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold text-white mb-4 animate-fadeIn drop-shadow-2xl">
-          RUN KUMBH
-        </h1>
+        
+        {/* RUN KUMBH title with photos on left and right */}
+        <div className="flex items-center justify-center gap-4 mb-4 animate-fadeIn">
+          
+          {/* LEFT PHOTO - RVITM Logo */}
+          <img
+            src="https://lh3.googleusercontent.com/d/1fMPtMJ-gRTr_31b4zn02PK4dneRuknZ5"
+            alt="RVITM Logo"
+            className="hidden sm:block object-contain rounded-2xl"
+            style={{ width: '120px', height: '100px' }}
+          />
+
+          <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold text-white drop-shadow-2xl">
+            RUN KUMBH
+          </h1>
+
+          {/* RIGHT PHOTO - NCC Logo */}
+          <img
+            src="https://lh3.googleusercontent.com/d/1Rn8TjlvghEiEzfMvtW8eZkVybc8d2vpi"
+            alt="NCC Logo"
+            className="hidden sm:block object-contain rounded-2xl"
+            style={{ width: '120px', height: '120px' }}
+          />
+
+        </div>
         
         <div className="bg-white/20 backdrop-blur-md rounded-3xl px-8 py-4 mb-6 inline-block animate-fadeIn delay-100">
           <h2 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-white tracking-wide">
@@ -193,8 +215,8 @@ function HeroSection({ scrollToSection }) {
         </p>
         
         <p className="text-xl text-white mb-8 animate-fadeIn delay-300">
-          <span className="font-bold text-2xl">RV Institute of Technology and Management</span>
-          <br />Department of Physical Education & Sports
+          <span className="font-bold text-2xl">RV Institute of Technology and Manag nt</span>
+          <br />National Cadet Corps 
         </p>
         
         <div className="bg-white/15 backdrop-blur-md rounded-2xl p-6 mb-8 inline-block animate-fadeIn delay-400">
@@ -286,6 +308,11 @@ function AboutSection() {
       icon: <Sun className="w-12 h-12 text-orange-600" />,
       title: 'Summer Energy',
       description: 'Feel the warmth of summer sunshine energizing your every step.'
+    },
+    {
+      icon: <Wallet className="w-12 h-12 text-orange-600" />,
+      title: 'Prize Money',
+      description: 'The Total Prize pool for this event is ₹30000.Important Note-*CASH PRIZE ONLY FOR 5K CATEGORIES*'
     }
   ];
 
@@ -298,6 +325,9 @@ function AboutSection() {
           </h2>
           <p className="text-2xl text-gray-700 font-semibold">
             RV Institute of Technology and Management
+          </p>
+          <p className="text-2xl text-gray-700 font-semibold">
+            National Cadet Corps
           </p>
           <p className="text-lg text-gray-600 mt-2">
             monsoon running event
@@ -532,21 +562,39 @@ function RouteMapSection() {
           </p>
         </div>
 
-        <Card className="card-modern max-w-5xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Race Route - Coming Soon</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-gradient-light rounded-lg p-12 text-center min-h-[400px] flex items-center justify-center">
-              <div>
-                <MapPin className="w-24 h-24 text-teal-600 mx-auto mb-4 animate-float" />
-                <p className="text-lg text-gray-700 font-semibold">
-                  Route map will be updated soon
-                </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* 3K Route */}
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-gradient">3kms Route</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg overflow-hidden">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/d5ncqxm5_Route-3k.png"
+                  alt="3km Route Map"
+                  className="w-full h-auto object-cover"
+                />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* 5K Route */}
+          <Card className="card-modern">
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-gradient">5kms Route</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg overflow-hidden">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/6bk49mbp_Route-5k.png"
+                  alt="5km Route Map"
+                  className="w-full h-auto object-cover"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </section>
   );
@@ -651,7 +699,7 @@ function ContactSection() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-teal-600" />
-                <CardTitle className="text-xl">Lt. Raghu G M</CardTitle>
+                <CardTitle className="text-xl">Lt. Raghu G M(Event Manager)</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -663,7 +711,7 @@ function ContactSection() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-orange-600" />
-                <CardTitle className="text-xl">Pranav</CardTitle>
+                <CardTitle className="text-xl">Pranav(Event co-ordinator)</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -675,7 +723,7 @@ function ContactSection() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-teal-600" />
-                <CardTitle className="text-xl">Prajeet</CardTitle>
+                <CardTitle className="text-xl">Prajeet(Event co-ordinator)</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -690,7 +738,7 @@ function ContactSection() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-gray-700 font-semibold text-lg">RV Institute of Technology and Management</p>
-            <p className="text-gray-600 mt-2">Department of Physical Education & Sports</p>
+            <p className="text-gray-600 mt-2">National Cadet Corps</p>
             <p className="text-gray-600">Bengaluru, Karnataka</p>
           </CardContent>
         </Card>
@@ -714,7 +762,7 @@ function Footer({ scrollToSection }) {
               RV Institute of Technology and Management
             </p>
             <p className="text-white/70 text-sm mt-2">
-              Department of Physical Education & Sports
+              National Cadet Corps
             </p>
           </div>
 
