@@ -573,6 +573,12 @@ async def shutdown_db_client():
     client.close()
 @api_router.put("/admin/events/{event_id}")
 async def update_event(event_id: str, event_data: dict):
+    # Convert numeric fields if present
+    if 'registration_fee' in event_data:
+        event_data['registration_fee'] = float(event_data['registration_fee'])
+    if 'max_participants' in event_data:
+        event_data['max_participants'] = int(event_data['max_participants'])
+    
     result = await db.events.update_one(
         {"id": event_id},
         {"$set": event_data}

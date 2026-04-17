@@ -1114,7 +1114,7 @@ function AdminPage({ toast }) {
 
   return (
     <div className="min-h-screen bg-gradient-light p-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1800px] mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gradient">Admin Dashboard</h1>
@@ -1153,118 +1153,19 @@ function AdminPage({ toast }) {
           </Card>
         </div>
 
-        {/* Manage Events Card — Image column removed so Actions is always visible */}
+        {/* Manage Events Card */}
+        <div className="flex flex-row items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Manage Events</h2>
+          <Button 
+            className="bg-gradient-primary whitespace-nowrap"
+            onClick={() => setShowAddEventDialog(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Event
+          </Button>
+        </div>
         <Card className="card-modern mb-8">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl">Manage Events</CardTitle>
-            <Dialog open={showAddEventDialog} onOpenChange={setShowAddEventDialog}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Event
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Add New Event</DialogTitle>
-                  <DialogDescription>Create a new event category</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddEvent} className="space-y-4">
-                  <div>
-                    <Label>Title</Label>
-                    <Input
-                      value={newEventData.title}
-                      onChange={(e) => setNewEventData({...newEventData, title: e.target.value})}
-                      placeholder="E.g., Open Men & Women - 5K Run"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label>Description</Label>
-                    <textarea
-                      className="w-full p-2 border rounded min-h-[100px] text-sm"
-                      value={newEventData.description}
-                      onChange={(e) => setNewEventData({...newEventData, description: e.target.value})}
-                      placeholder="Include prize details and participant requirements"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Distance</Label>
-                      <Input
-                        value={newEventData.distance}
-                        onChange={(e) => setNewEventData({...newEventData, distance: e.target.value})}
-                        placeholder="E.g., 5 km"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Category</Label>
-                      <Input
-                        value={newEventData.category}
-                        onChange={(e) => setNewEventData({...newEventData, category: e.target.value})}
-                        placeholder="E.g., Open 5K"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Price (₹)</Label>
-                      <Input
-                        type="number"
-                        value={newEventData.registration_fee}
-                        onChange={(e) => setNewEventData({...newEventData, registration_fee: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Max Participants</Label>
-                      <Input
-                        type="number"
-                        value={newEventData.max_participants}
-                        onChange={(e) => setNewEventData({...newEventData, max_participants: e.target.value})}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Location</Label>
-                    <Input
-                      value={newEventData.location}
-                      onChange={(e) => setNewEventData({...newEventData, location: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label>Image URL</Label>
-                    <Input
-                      value={newEventData.image_url}
-                      onChange={(e) => setNewEventData({...newEventData, image_url: e.target.value})}
-                      placeholder="https://..."
-                      required
-                    />
-                    {newEventData.image_url && (
-                      <img
-                        src={newEventData.image_url}
-                        alt="Preview"
-                        className="mt-2 w-full h-32 object-cover rounded-lg"
-                      />
-                    )}
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-primary text-lg py-6"
-                    disabled={loading}
-                  >
-                    {loading ? 'Creating...' : 'Create Event'}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -1283,24 +1184,26 @@ function AdminPage({ toast }) {
                       <td className="p-3">{event.category}</td>
                       <td className="p-3">{event.distance}</td>
                       <td className="p-3 font-bold text-teal-600">₹{event.registration_fee}</td>
-                      <td className="p-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-gradient-primary"
-                          onClick={() => handleEditEvent(event)}
-                        >
-                          <Edit2 className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="bg-red-500 hover:bg-red-600"
-                          onClick={() => handleDeleteEvent(event.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
+                      <td className="p-3">
+                        <div className="flex gap-2 min-w-[200px]">
+                          <Button
+                            size="sm"
+                            className="bg-gradient-primary"
+                            onClick={() => handleEditEvent(event)}
+                          >
+                            <Edit2 className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="bg-red-500 hover:bg-red-600"
+                            onClick={() => handleDeleteEvent(event.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1309,6 +1212,108 @@ function AdminPage({ toast }) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Add Event Dialog */}
+        <Dialog open={showAddEventDialog} onOpenChange={setShowAddEventDialog}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Event</DialogTitle>
+              <DialogDescription>Create a new event category</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAddEvent} className="space-y-4">
+              <div>
+                <Label>Title</Label>
+                <Input
+                  value={newEventData.title}
+                  onChange={(e) => setNewEventData({...newEventData, title: e.target.value})}
+                  placeholder="E.g., Open Men & Women - 5K Run"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <textarea
+                  className="w-full p-2 border rounded min-h-[100px] text-sm"
+                  value={newEventData.description}
+                  onChange={(e) => setNewEventData({...newEventData, description: e.target.value})}
+                  placeholder="Include prize details and participant requirements"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Distance</Label>
+                  <Input
+                    value={newEventData.distance}
+                    onChange={(e) => setNewEventData({...newEventData, distance: e.target.value})}
+                    placeholder="E.g., 5 km"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Category</Label>
+                  <Input
+                    value={newEventData.category}
+                    onChange={(e) => setNewEventData({...newEventData, category: e.target.value})}
+                    placeholder="E.g., Open 5K"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Price (₹)</Label>
+                  <Input
+                    type="number"
+                    value={newEventData.registration_fee}
+                    onChange={(e) => setNewEventData({...newEventData, registration_fee: e.target.value})}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Max Participants</Label>
+                  <Input
+                    type="number"
+                    value={newEventData.max_participants}
+                    onChange={(e) => setNewEventData({...newEventData, max_participants: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Location</Label>
+                <Input
+                  value={newEventData.location}
+                  onChange={(e) => setNewEventData({...newEventData, location: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Image URL</Label>
+                <Input
+                  value={newEventData.image_url}
+                  onChange={(e) => setNewEventData({...newEventData, image_url: e.target.value})}
+                  placeholder="https://..."
+                  required
+                />
+                {newEventData.image_url && (
+                  <img
+                    src={newEventData.image_url}
+                    alt="Preview"
+                    className="mt-2 w-full h-32 object-cover rounded-lg"
+                  />
+                )}
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-primary text-lg py-6"
+                disabled={loading}
+              >
+                {loading ? 'Creating...' : 'Create Event'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Event Dialog */}
         <Dialog open={showEditEventDialog} onOpenChange={setShowEditEventDialog}>
@@ -1406,73 +1411,18 @@ function AdminPage({ toast }) {
         </Dialog>
 
         {/* Registrations Table */}
+        <div className="flex flex-row items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Confirmed Registrations</h2>
+          <Button 
+            className="bg-gradient-primary whitespace-nowrap"
+            onClick={() => setShowAddDialog(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Registration
+          </Button>
+        </div>
         <Card className="card-modern mb-8">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl">Confirmed Registrations</CardTitle>
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Registration
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Registration</DialogTitle>
-                  <DialogDescription>Manually create a registration</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddRegistration} className="space-y-4">
-                  <div>
-                    <Label htmlFor="event">Event</Label>
-                    <select
-                      id="event"
-                      className="w-full p-2 border rounded"
-                      value={newRegistration.event_id}
-                      onChange={(e) => setNewRegistration({...newRegistration, event_id: e.target.value})}
-                      required
-                    >
-                      <option value="">Select Event</option>
-                      {events.map(event => (
-                        <option key={event.id} value={event.id}>{event.title}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="add_name">Name</Label>
-                    <Input
-                      id="add_name"
-                      value={newRegistration.user_name}
-                      onChange={(e) => setNewRegistration({...newRegistration, user_name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="add_email">Email</Label>
-                    <Input
-                      id="add_email"
-                      type="email"
-                      value={newRegistration.user_email}
-                      onChange={(e) => setNewRegistration({...newRegistration, user_email: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="add_phone">Phone</Label>
-                    <Input
-                      id="add_phone"
-                      value={newRegistration.user_phone}
-                      onChange={(e) => setNewRegistration({...newRegistration, user_phone: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-gradient-primary" disabled={loading}>
-                    {loading ? 'Adding...' : 'Add Registration'}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -1506,14 +1456,17 @@ function AdminPage({ toast }) {
                         </select>
                       </td>
                       <td className="p-3">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteRegistration(reg.id)}
-                          className="bg-red-500 hover:bg-red-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="min-w-[80px]">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteRegistration(reg.id)}
+                            className="bg-red-500 hover:bg-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1525,6 +1478,64 @@ function AdminPage({ toast }) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Add Registration Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Registration</DialogTitle>
+              <DialogDescription>Manually create a registration</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAddRegistration} className="space-y-4">
+              <div>
+                <Label htmlFor="event">Event</Label>
+                <select
+                  id="event"
+                  className="w-full p-2 border rounded"
+                  value={newRegistration.event_id}
+                  onChange={(e) => setNewRegistration({...newRegistration, event_id: e.target.value})}
+                  required
+                >
+                  <option value="">Select Event</option>
+                  {events.map(event => (
+                    <option key={event.id} value={event.id}>{event.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="add_name">Name</Label>
+                <Input
+                  id="add_name"
+                  value={newRegistration.user_name}
+                  onChange={(e) => setNewRegistration({...newRegistration, user_name: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="add_email">Email</Label>
+                <Input
+                  id="add_email"
+                  type="email"
+                  value={newRegistration.user_email}
+                  onChange={(e) => setNewRegistration({...newRegistration, user_email: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="add_phone">Phone</Label>
+                <Input
+                  id="add_phone"
+                  value={newRegistration.user_phone}
+                  onChange={(e) => setNewRegistration({...newRegistration, user_phone: e.target.value})}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full bg-gradient-primary" disabled={loading}>
+                {loading ? 'Adding...' : 'Add Registration'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Transactions Table */}
         <Card className="card-modern">
@@ -1569,7 +1580,8 @@ function AdminPage({ toast }) {
                           onClick={() => handleDeleteTransaction(trans.id)}
                           className="bg-red-500 hover:bg-red-600"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
                         </Button>
                       </td>
                     </tr>
