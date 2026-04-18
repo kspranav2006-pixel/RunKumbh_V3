@@ -21,14 +21,31 @@ div[title*="Made"],
 }
 
 /* Hide Emergent watermark button specifically */
-button[style*="position: fixed"][style*="bottom"][style*="right"]:has(svg) {
+button[style*="position: fixed"][style*="bottom"][style*="right"]:has(svg):not([role="dialog"] button) {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
 }
 
-button[style*="position: fixed"][style*="bottom"][style*="right"] {
+button[style*="position: fixed"][style*="bottom"][style*="right"]:not([role="dialog"] button) {
   display: none !important;
+}
+
+/* Ensure dialog close button is always visible */
+[role="dialog"] button[class*="absolute"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 9999;
+  background: white;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+[role="dialog"] button[class*="absolute"]:hover {
+  background: #f3f4f6;
+  opacity: 1 !important;
 }
 
 /* Global Styles */
