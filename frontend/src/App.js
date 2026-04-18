@@ -504,19 +504,6 @@ function EventsSection({ events, toast }) {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedEvent(null);
-                        setRegistrationData({ user_name: '', user_email: '', user_phone: '', gender: 'male', blood_group: 'A+', emergency_contact: '' });
-                      }}
-                      className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none z-[9999] cursor-pointer bg-white p-1 hover:bg-gray-100"
-                      aria-label="Close"
-                    >
-                      <X className="h-5 w-5 text-gray-600" />
-                    </button>
                     <DialogHeader>
                       <DialogTitle>Register for {event.title}</DialogTitle>
                       <DialogDescription>
@@ -1141,7 +1128,7 @@ function AdminPage({ toast }) {
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Delete this event? This cannot be undone.')) return;
     try {
-      await axios.delete(`${API}/api/admin/events/${eventId}`);
+      await axios.delete(`${API}/admin/events/${eventId}`);
       toast({ title: 'Success', description: 'Event deleted' });
       fetchData();
     } catch (error) {
@@ -1484,6 +1471,26 @@ function AdminPage({ toast }) {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <input
+                  type="date"
+                  value={eventForm.date}
+                  onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <input
+                  type="text"
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm({...eventForm, location: e.target.value})}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                  required
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Distance</label>
@@ -1577,6 +1584,26 @@ function AdminPage({ toast }) {
                   value={eventForm.description}
                   onChange={(e) => setEventForm({...eventForm, description: e.target.value})}
                   className="w-full px-3 py-2 border rounded min-h-[80px] focus:ring-2 focus:ring-teal-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <input
+                  type="date"
+                  value={eventForm.date}
+                  onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <input
+                  type="text"
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm({...eventForm, location: e.target.value})}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
                   required
                 />
               </div>
