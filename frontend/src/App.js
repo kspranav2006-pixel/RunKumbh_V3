@@ -457,8 +457,15 @@ function EventsSection({ events, toast }) {
             </CardContent>
           </Card>
 
-          {/* Event Cards */}
-          {events.map((event, index) => (
+          {/* Event Cards - Sort to show Open 5K first */}
+          {events
+            .sort((a, b) => {
+              // Open 5K first, then rest in original order
+              if (a.category === 'Open 5K') return -1;
+              if (b.category === 'Open 5K') return 1;
+              return 0;
+            })
+            .map((event, index) => (
             <Card key={event.id} className="card-modern animate-fadeIn" style={{animationDelay: `${index * 0.1}s`, opacity: 0}}>
               <div className="relative h-48 overflow-hidden rounded-t-lg">
                 <img
