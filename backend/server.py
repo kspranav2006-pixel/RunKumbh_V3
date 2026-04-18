@@ -134,6 +134,8 @@ class Registration(BaseModel):
     registration_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "confirmed"
     bib_number: str
+    checked_in: bool = False
+    checked_in_at: Optional[datetime] = None
 
 # Contact Models
 class ContactCreate(BaseModel):
@@ -540,7 +542,12 @@ async def admin_login(credentials: AdminLogin):
         raise HTTPException(status_code=401, detail="Invalid password")
 
 @api_router.get("/admin/registrations")
-async def get_all_registrations():
+async def get_all_registrations(
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    gender: Optional[str] = None,
+    checked_in: Optional[bool] = None
+):
     # Get all registrations
     registrations = await db.registrations.find({}, {"_id": 0}).to_list(10000)
     for reg in registrations:
@@ -557,6 +564,38 @@ async def get_all_registrations():
     
     # Get events for reference
     events = await db.events.find({}, {"_id": 0}).to_list(1000)
+    event_dict = {e['id']: e for e in events}
+    
+    # Apply filters
+    if search or category or gender is not None or checked_in is not None:
+        filtered = []
+        for reg in registrations:
+            # Search filter (name, email, bib)
+            if search:
+                search_lower = search.lower()
+                if not (
+                    search_lower in reg.get('user_name', '').lower() or
+                    search_lower in reg.get('user_email', '').lower() or
+                    search_lower in reg.get('bib_number', '').lower()
+                ):
+                    continue
+            
+            # Category filter
+            if category:
+                event = event_dict.get(reg['event_id'])
+                if not event or event.get('category') != category:
+                    continue
+            
+            # Gender filter
+            if gender and reg.get('gender') != gender:
+                continue
+            
+            # Checked-in filter
+            if checked_in is not None and reg.get('checked_in', False) != checked_in:
+                continue
+            
+            filtered.append(reg)
+        registrations = filtered
     
     return {
         "registrations": registrations,
@@ -668,6 +707,238 @@ async def delete_event(event_id: str):
         raise HTTPException(status_code=404, detail="Event not found")
     
     return {"message": "Event deleted successfully"}
+
+# New Admin Features
+
+@api_router.get("/admin/analytics")
+async def get_analytics():
+    """Get analytics data for dashboard"""
+    # Get all registrations and events
+    registrations = await db.registrations.find({}, {"_id": 0}).to_list(10000)
+    events = await db.events.find({}, {"_id": 0}).to_list(1000)
+    
+    # Create event lookup dictionary
+    event_dict = {e['id']: e for e in events}
+    
+    # Calculate total revenue by category
+    revenue_by_category = {}
+    gender_distribution = {"male": 0, "female": 0, "other": 0}
+    tshirt_distribution = {}
+    age_distribution = {"18-25": 0, "26-35": 0, "36-45": 0, "46+": 0}
+    registration_trends = {}
+    
+    for reg in registrations:
+        # Revenue by category
+        event = event_dict.get(reg['event_id'])
+        if event:
+            category = event.get('category', 'Unknown')
+            fee = float(event.get('registration_fee', 0))
+            revenue_by_category[category] = revenue_by_category.get(category, 0) + fee
+        
+        # Gender distribution
+        gender = reg.get('gender', 'other').lower()
+        if gender in gender_distribution:
+            gender_distribution[gender] += 1
+        
+        # T-shirt size distribution
+        tshirt = reg.get('tshirt_size', 'M')
+        tshirt_distribution[tshirt] = tshirt_distribution.get(tshirt, 0) + 1
+        
+        # Age distribution
+        dob = reg.get('dob', '')
+        if dob:
+            try:
+                birth_year = int(dob.split('-')[0])
+                age = 2026 - birth_year
+                if age < 26:
+                    age_distribution["18-25"] += 1
+                elif age < 36:
+                    age_distribution["26-35"] += 1
+                elif age < 46:
+                    age_distribution["36-45"] += 1
+                else:
+                    age_distribution["46+"] += 1
+            except:
+                pass
+        
+        # Registration trends (by date)
+        reg_date_str = reg.get('registration_date', '')
+        if isinstance(reg_date_str, str):
+            reg_date = reg_date_str.split('T')[0]  # Get just the date part
+        else:
+            reg_date = datetime.now(timezone.utc).date().isoformat()
+        registration_trends[reg_date] = registration_trends.get(reg_date, 0) + 1
+    
+    # Calculate total revenue
+    total_revenue = sum(revenue_by_category.values())
+    
+    # Sort registration trends by date
+    sorted_trends = [
+        {"date": date, "count": count}
+        for date, count in sorted(registration_trends.items())
+    ]
+    
+    return {
+        "total_registrations": len(registrations),
+        "total_revenue": total_revenue,
+        "revenue_by_category": [
+            {"category": cat, "revenue": rev}
+            for cat, rev in revenue_by_category.items()
+        ],
+        "gender_distribution": [
+            {"gender": gender, "count": count}
+            for gender, count in gender_distribution.items()
+        ],
+        "tshirt_distribution": [
+            {"size": size, "count": count}
+            for size, count in sorted(tshirt_distribution.items())
+        ],
+        "age_distribution": [
+            {"range": range_name, "count": count}
+            for range_name, count in age_distribution.items()
+        ],
+        "registration_trends": sorted_trends,
+        "checked_in_count": sum(1 for r in registrations if r.get('checked_in', False))
+    }
+
+@api_router.get("/admin/registrations/export")
+async def export_registrations(
+    category: Optional[str] = None,
+    gender: Optional[str] = None,
+    checked_in: Optional[bool] = None
+):
+    """Export registrations as CSV"""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    # Get registrations with filters
+    filter_query = {}
+    registrations = await db.registrations.find(filter_query, {"_id": 0}).to_list(10000)
+    events = await db.events.find({}, {"_id": 0}).to_list(1000)
+    event_dict = {e['id']: e for e in events}
+    
+    # Apply filters
+    if category or gender is not None or checked_in is not None:
+        filtered = []
+        for reg in registrations:
+            event = event_dict.get(reg['event_id'])
+            if category and event and event.get('category') != category:
+                continue
+            if gender and reg.get('gender') != gender:
+                continue
+            if checked_in is not None and reg.get('checked_in', False) != checked_in:
+                continue
+            filtered.append(reg)
+        registrations = filtered
+    
+    # Create CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Headers
+    writer.writerow([
+        'BIB Number', 'Name', 'Email', 'Phone', 'Gender', 'DOB', 
+        'T-Shirt Size', 'Event Category', 'Event Title', 'Registration Fee',
+        'Emergency Contact Name', 'Emergency Contact', 'Medical Condition',
+        'Registration Date', 'Checked In', 'Check-in Time'
+    ])
+    
+    # Data rows
+    for reg in registrations:
+        event = event_dict.get(reg['event_id'], {})
+        checked_in_at = reg.get('checked_in_at', '')
+        if checked_in_at and not isinstance(checked_in_at, str):
+            checked_in_at = checked_in_at.isoformat()
+        
+        writer.writerow([
+            reg.get('bib_number', ''),
+            reg.get('user_name', ''),
+            reg.get('user_email', ''),
+            reg.get('user_phone', ''),
+            reg.get('gender', ''),
+            reg.get('dob', ''),
+            reg.get('tshirt_size', ''),
+            event.get('category', ''),
+            event.get('title', ''),
+            event.get('registration_fee', 0),
+            reg.get('emergency_contact_name', ''),
+            reg.get('emergency_contact', ''),
+            reg.get('has_medical_condition', ''),
+            reg.get('registration_date', ''),
+            'Yes' if reg.get('checked_in', False) else 'No',
+            checked_in_at
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=registrations.csv"}
+    )
+
+@api_router.post("/admin/registrations/{registration_id}/checkin")
+async def checkin_registration(registration_id: str):
+    """Mark a registration as checked in"""
+    result = await db.registrations.update_one(
+        {"id": registration_id},
+        {
+            "$set": {
+                "checked_in": True,
+                "checked_in_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    return {"message": "Check-in successful"}
+
+@api_router.get("/admin/registrations/bib/{bib_number}")
+async def get_registration_by_bib(bib_number: str):
+    """Get registration by BIB number for check-in"""
+    registration = await db.registrations.find_one({"bib_number": bib_number}, {"_id": 0})
+    
+    if not registration:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    # Get event details
+    event = await db.events.find_one({"id": registration['event_id']}, {"_id": 0})
+    
+    return {
+        "registration": registration,
+        "event": event
+    }
+
+class BulkEmailRequest(BaseModel):
+    subject: str
+    message: str
+    recipients: str  # "all", "category", or specific category name
+
+@api_router.post("/admin/email/send-bulk")
+async def send_bulk_email(email_data: BulkEmailRequest):
+    """Send bulk email to participants"""
+    # Get recipients based on filter
+    filter_query = {}
+    
+    if email_data.recipients != "all":
+        # Get events with matching category
+        events = await db.events.find({"category": email_data.recipients}, {"_id": 0}).to_list(1000)
+        event_ids = [e['id'] for e in events]
+        filter_query = {"event_id": {"$in": event_ids}}
+    
+    registrations = await db.registrations.find(filter_query, {"_id": 0}).to_list(10000)
+    emails = [reg['user_email'] for reg in registrations]
+    
+    # Note: Actual email sending would require an email service integration
+    # For now, we'll just return the count and emails
+    return {
+        "message": "Email sending initiated",
+        "recipient_count": len(emails),
+        "recipients": emails[:10],  # Sample of first 10
+        "note": "Email service integration required for actual sending"
+    }
 
 # Include the router in the main app
 app.include_router(api_router)

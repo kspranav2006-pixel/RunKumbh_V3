@@ -330,7 +330,7 @@ function AboutSection() {
             National Cadet Corps
           </p>
           <p className="text-lg text-gray-600 mt-2">
-            monsoon running event
+            Monsoon running event
           </p>
         </div>
 
