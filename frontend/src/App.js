@@ -492,11 +492,17 @@ function EventsSection({ events, toast }) {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <button
-                      onClick={() => setSelectedEvent(null)}
-                      className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none z-50"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedEvent(null);
+                        setRegistrationData({ user_name: '', user_email: '', user_phone: '', gender: 'male', blood_group: 'A+', emergency_contact: '' });
+                      }}
+                      className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none z-[9999] cursor-pointer bg-white p-1 hover:bg-gray-100"
+                      aria-label="Close"
                     >
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Close</span>
+                      <X className="h-5 w-5 text-gray-600" />
                     </button>
                     <DialogHeader>
                       <DialogTitle>Register for {event.title}</DialogTitle>
