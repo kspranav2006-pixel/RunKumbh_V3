@@ -451,7 +451,7 @@ function EventsSection({ events, toast }) {
                 <img
                   src={event.image_url}
                   alt={event.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-top"
                 />
                 <div className="absolute top-4 right-4 bg-gradient-primary text-white px-4 py-2 rounded-full font-bold shadow-lg">
                   {event.category}
@@ -476,7 +476,12 @@ function EventsSection({ events, toast }) {
                 </div>
               </CardContent>
               <CardFooter>
-                <Dialog open={selectedEvent?.id === event.id} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+                <Dialog open={selectedEvent?.id === event.id} onOpenChange={(open) => {
+                  if (!open) {
+                    setSelectedEvent(null);
+                    setRegistrationData({ user_name: '', user_email: '', user_phone: '', gender: 'male', blood_group: 'A+', emergency_contact: '' });
+                  }
+                }}>
                   <DialogTrigger asChild>
                     <Button
                       className="w-full bg-gradient-primary hover:opacity-90 text-white font-bold text-lg py-6"

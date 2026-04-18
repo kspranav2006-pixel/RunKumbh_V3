@@ -97,7 +97,7 @@ async def seed_database():
             "distance": "3 km",
             "category": "Couple 3K",
             "max_participants": 150,
-            "image_url": "https://images.unsplash.com/photo-1746046489457-9628dc3b8a1f",
+            "image_url": "https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/5spb4ure_couple%203k%20run%20photo.jpg",
             "registration_fee": 799.00,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
