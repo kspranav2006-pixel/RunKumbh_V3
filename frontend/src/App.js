@@ -950,12 +950,12 @@ function ContactSection() {
           </CardHeader>
           <CardContent className="text-center">
             <a 
-              href="https://maps.google.com/?q=Chaithanya+Layout,+8th+Phase,+J.+P.+Nagar,+Bengaluru,+Kothnur,+Karnataka+560083"
+              href="https://maps.app.goo.gl/GpfEXt7QU5pCxFRdA"
               target="_blank"
               rel="noopener noreferrer"
               className="text-teal-600 hover:text-teal-700 font-semibold text-lg underline mb-3 block"
             >
-              Chaithanya Layout, 8th Phase, J. P. Nagar, Bengaluru, Kothnur, Karnataka 560083
+              RV INSTITUTE OF TECHNOLOGY AND MANAGEMENT, Chaithanya Layout, 8th Phase, J. P. Nagar, Bengaluru, Kothnur, Karnataka 560083
             </a>
             <p className="text-gray-700 font-semibold text-lg">RV Institute of Technology and Management</p>
             <p className="text-gray-600 mt-2">National Cadet Corps</p>
