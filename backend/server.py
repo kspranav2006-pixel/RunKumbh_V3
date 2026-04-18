@@ -636,6 +636,39 @@ async def update_registration(registration_id: str, update_data: dict):
     
     return {"message": "Registration updated successfully"}
 
+@api_router.put("/admin/events/{event_id}")
+async def update_event(event_id: str, event_data: dict):
+    # Convert numeric fields if present
+    if 'registration_fee' in event_data:
+        event_data['registration_fee'] = float(event_data['registration_fee'])
+    if 'max_participants' in event_data:
+        event_data['max_participants'] = int(event_data['max_participants'])
+    
+    result = await db.events.update_one(
+        {"id": event_id},
+        {"$set": event_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"message": "Event updated successfully"}
+
+@api_router.post("/admin/events")
+async def create_event_admin(event_data: EventCreate):
+    event_obj = Event(**event_data.model_dump())
+    doc = event_obj.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    await db.events.insert_one(doc)
+    return {"message": "Event created successfully", "event": event_obj}
+
+@api_router.delete("/admin/events/{event_id}")
+async def delete_event(event_id: str):
+    result = await db.events.delete_one({"id": event_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    return {"message": "Event deleted successfully"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -657,35 +690,3 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-@api_router.put("/admin/events/{event_id}")
-async def update_event(event_id: str, event_data: dict):
-    # Convert numeric fields if present
-    if 'registration_fee' in event_data:
-        event_data['registration_fee'] = float(event_data['registration_fee'])
-    if 'max_participants' in event_data:
-        event_data['max_participants'] = int(event_data['max_participants'])
-    
-    result = await db.events.update_one(
-        {"id": event_id},
-        {"$set": event_data}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Event not found")
-    return {"message": "Event updated successfully"}
-
-@api_router.post("/admin/events")
-async def create_event(event_data: EventCreate):
-    event_obj = Event(**event_data.model_dump())
-    doc = event_obj.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    
-    await db.events.insert_one(doc)
-    return {"message": "Event created successfully", "event": event_obj}
-
-@api_router.delete("/admin/events/{event_id}")
-async def delete_event(event_id: str):
-    result = await db.events.delete_one({"id": event_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Event not found")
-    
-    return {"message": "Event deleted successfully"}
