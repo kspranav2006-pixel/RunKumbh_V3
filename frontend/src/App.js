@@ -1051,6 +1051,12 @@ function AdminPage({ toast }) {
     emergency_contact: ''
   });
 
+  // Search and Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterCheckedIn, setFilterCheckedIn] = useState('');
+
   useEffect(() => {
     if (authenticated) {
       fetchData();
@@ -1059,7 +1065,17 @@ function AdminPage({ toast }) {
 
   const fetchData = async () => {
     try {
-      const res = await axios.get(`${API}/admin/registrations`);
+      // Build query params for search and filters
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (filterCategory) params.append('category', filterCategory);
+      if (filterGender) params.append('gender', filterGender);
+      if (filterCheckedIn !== '') params.append('checked_in', filterCheckedIn);
+      
+      const queryString = params.toString();
+      const url = queryString ? `${API}/admin/registrations?${queryString}` : `${API}/admin/registrations`;
+      
+      const res = await axios.get(url);
       setEvents(res.data.events || []);
       setRegistrations(res.data.registrations || []);
       setTransactions(res.data.transactions || []);
@@ -1068,6 +1084,26 @@ function AdminPage({ toast }) {
     } catch (error) {
       console.error('Error fetching data:', error);
     }
+  };
+
+  // Trigger fetchData when filters change
+  useEffect(() => {
+    if (authenticated) {
+      fetchData();
+    }
+  }, [searchQuery, filterCategory, filterGender, filterCheckedIn]);
+
+  const handleExportCSV = () => {
+    const params = new URLSearchParams();
+    if (filterCategory) params.append('category', filterCategory);
+    if (filterGender) params.append('gender', filterGender);
+    if (filterCheckedIn !== '') params.append('checked_in', filterCheckedIn);
+    
+    const queryString = params.toString();
+    const url = queryString ? `${API}/admin/registrations/export?${queryString}` : `${API}/admin/registrations/export`;
+    
+    window.open(url, '_blank');
+    toast({ title: 'Export Started', description: 'Your CSV file is downloading...' });
   };
 
   const handleLogin = async (e) => {
@@ -1336,14 +1372,88 @@ function AdminPage({ toast }) {
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Confirmed Registrations</h2>
-            <button
-              onClick={() => setShowAddRegDialog(true)}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Add Registration
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleExportCSV}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export CSV
+              </button>
+              <button
+                onClick={() => setShowAddRegDialog(true)}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Add Registration
+              </button>
+            </div>
           </div>
+
+          {/* Search and Filters */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <input
+                type="text"
+                placeholder="Name, Email, or BIB..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">All Categories</option>
+                <option value="Open 5K">Open 5K</option>
+                <option value="Students 5K">Students 5K</option>
+                <option value="Students 3K">Students 3K</option>
+                <option value="Staff 3K">Staff 3K</option>
+                <option value="Family 3K">Family 3K</option>
+                <option value="Couple 3K">Couple 3K</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+              <select
+                value={filterGender}
+                onChange={(e) => setFilterGender(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">All Genders</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Status</label>
+              <select
+                value={filterCheckedIn}
+                onChange={(e) => setFilterCheckedIn(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">All Status</option>
+                <option value="true">Checked In</option>
+                <option value="false">Not Checked In</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mb-4 text-sm text-gray-600">
+            Showing <span className="font-semibold text-teal-600">{registrations.length}</span> registration(s)
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -1353,6 +1463,7 @@ function AdminPage({ toast }) {
                   <th className="text-left p-4 font-semibold text-gray-700">Email</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Phone</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Event</th>
+                  <th className="text-left p-4 font-semibold text-gray-700">Check-in</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Status</th>
                   <th className="text-left p-4 font-semibold text-gray-700 min-w-[120px]">Actions</th>
                 </tr>
@@ -1365,6 +1476,22 @@ function AdminPage({ toast }) {
                     <td className="p-4 text-gray-600">{reg.user_email}</td>
                     <td className="p-4 text-gray-600">{reg.user_phone}</td>
                     <td className="p-4 text-gray-600">{getEventName(reg.event_id)}</td>
+                    <td className="p-4">
+                      {reg.checked_in ? (
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Checked In
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">
+                          Not Checked In
+                        </span>
+                      )}
+                    </td>
                     <td className="p-4">
                       <select
                         value={reg.status}
