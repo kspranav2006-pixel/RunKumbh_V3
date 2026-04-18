@@ -902,7 +902,10 @@ function ContactSection() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-teal-600" />
-                <CardTitle className="text-xl">Lt. Raghu G M(Event Manager)</CardTitle>
+                <div>
+                  <CardTitle className="text-xl">Lt. Raghu G M</CardTitle>
+                  <p className="text-sm text-gray-600">Event Manager</p>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -914,7 +917,10 @@ function ContactSection() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-orange-600" />
-                <CardTitle className="text-xl">Pranav(Event co-ordinator)</CardTitle>
+                <div>
+                  <CardTitle className="text-xl">KS Pranav</CardTitle>
+                  <p className="text-sm text-gray-600">Event Coordinator</p>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -926,7 +932,10 @@ function ContactSection() {
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-teal-600" />
-                <CardTitle className="text-xl">Prajeet(Event co-ordinator)</CardTitle>
+                <div>
+                  <CardTitle className="text-xl">Prajeet Gurlahosur</CardTitle>
+                  <p className="text-sm text-gray-600">Event Coordinator</p>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -940,6 +949,14 @@ function ContactSection() {
             <CardTitle className="text-2xl text-center">Location</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
+            <a 
+              href="https://maps.google.com/?q=Chaithanya+Layout,+8th+Phase,+J.+P.+Nagar,+Bengaluru,+Kothnur,+Karnataka+560083"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-teal-600 hover:text-teal-700 font-semibold text-lg underline mb-3 block"
+            >
+              Chaithanya Layout, 8th Phase, J. P. Nagar, Bengaluru, Kothnur, Karnataka 560083
+            </a>
             <p className="text-gray-700 font-semibold text-lg">RV Institute of Technology and Management</p>
             <p className="text-gray-600 mt-2">National Cadet Corps</p>
             <p className="text-gray-600">Bengaluru, Karnataka</p>
@@ -985,8 +1002,8 @@ function Footer({ scrollToSection }) {
           <div>
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
             <p className="text-white/80 mb-2">Lt. Raghu G M: +91 9743743618</p>
-            <p className="text-white/80 mb-2">Pranav: +91 8073290482</p>
-            <p className="text-white/80 mb-4">Prajeet: +91 9845610718</p>
+            <p className="text-white/80 mb-2">KS Pranav: +91 8073290482</p>
+            <p className="text-white/80 mb-4">Prajeet Gurlahosur: +91 9845610718</p>
             <p className="text-sm text-white/70">Registration: 20 April - 15 May 2026</p>
           </div>
         </div>

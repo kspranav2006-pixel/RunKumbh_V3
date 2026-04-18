@@ -96,6 +96,19 @@ class RegistrationCreate(BaseModel):
     user_email: str
     user_name: str
     user_phone: str
+    gender: str
+    dob: str
+    tshirt_size: str
+    marathon_experience: Optional[str] = ""
+    emergency_contact_name: str
+    emergency_contact: str
+    has_medical_condition: str
+    medical_condition_details: Optional[str] = ""
+    consent_physically_fit: bool
+    consent_own_risk: bool
+    consent_event_rules: bool
+    consent_photography: bool
+    consent_results_published: bool
 
 class Registration(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -105,6 +118,19 @@ class Registration(BaseModel):
     user_email: str
     user_name: str
     user_phone: str
+    gender: str
+    dob: str
+    tshirt_size: str
+    marathon_experience: str = ""
+    emergency_contact_name: str
+    emergency_contact: str
+    has_medical_condition: str
+    medical_condition_details: str = ""
+    consent_physically_fit: bool
+    consent_own_risk: bool
+    consent_event_rules: bool
+    consent_photography: bool
+    consent_results_published: bool
     registration_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "confirmed"
     bib_number: str
@@ -132,6 +158,19 @@ class PaymentCheckoutRequest(BaseModel):
     user_name: str
     user_email: EmailStr
     user_phone: str
+    gender: str
+    dob: str
+    tshirt_size: str
+    marathon_experience: Optional[str] = ""
+    emergency_contact_name: str
+    emergency_contact: str
+    has_medical_condition: str
+    medical_condition_details: Optional[str] = ""
+    consent_physically_fit: bool
+    consent_own_risk: bool
+    consent_event_rules: bool
+    consent_photography: bool
+    consent_results_published: bool
     origin_url: str
 
 class PaymentTransaction(BaseModel):
@@ -303,12 +342,26 @@ async def create_payment_checkout(request: Request, payment_request: PaymentChec
     bib_number = f"BIB{str(uuid.uuid4())[:8].upper()}"
     
     # Create checkout session
+    # Convert boolean values to strings for Stripe metadata (Stripe only accepts strings in metadata)
     metadata = {
         "event_id": payment_request.event_id,
         "event_title": event['title'],
         "user_name": payment_request.user_name,
         "user_email": payment_request.user_email,
         "user_phone": payment_request.user_phone,
+        "gender": payment_request.gender,
+        "dob": payment_request.dob,
+        "tshirt_size": payment_request.tshirt_size,
+        "marathon_experience": payment_request.marathon_experience,
+        "emergency_contact_name": payment_request.emergency_contact_name,
+        "emergency_contact": payment_request.emergency_contact,
+        "has_medical_condition": payment_request.has_medical_condition,
+        "medical_condition_details": payment_request.medical_condition_details,
+        "consent_physically_fit": str(payment_request.consent_physically_fit),
+        "consent_own_risk": str(payment_request.consent_own_risk),
+        "consent_event_rules": str(payment_request.consent_event_rules),
+        "consent_photography": str(payment_request.consent_photography),
+        "consent_results_published": str(payment_request.consent_results_published),
         "bib_number": bib_number
     }
     
@@ -392,13 +445,33 @@ async def get_payment_status(request: Request, session_id: str):
         })
         
         if not existing_reg:
-            # Create registration
+            # Create registration with all participant data from metadata
+            metadata = transaction.get('metadata', {})
+            # Convert string boolean values back to actual booleans
+            def str_to_bool(val):
+                if isinstance(val, bool):
+                    return val
+                return str(val).lower() == 'true'
+            
             reg_data = {
                 "user_id": str(uuid.uuid4()),
                 "event_id": transaction['event_id'],
                 "user_email": transaction['user_email'],
                 "user_name": transaction['user_name'],
                 "user_phone": transaction['user_phone'],
+                "gender": metadata.get('gender', ''),
+                "dob": metadata.get('dob', ''),
+                "tshirt_size": metadata.get('tshirt_size', 'M'),
+                "marathon_experience": metadata.get('marathon_experience', ''),
+                "emergency_contact_name": metadata.get('emergency_contact_name', ''),
+                "emergency_contact": metadata.get('emergency_contact', ''),
+                "has_medical_condition": metadata.get('has_medical_condition', 'no'),
+                "medical_condition_details": metadata.get('medical_condition_details', ''),
+                "consent_physically_fit": str_to_bool(metadata.get('consent_physically_fit', 'False')),
+                "consent_own_risk": str_to_bool(metadata.get('consent_own_risk', 'False')),
+                "consent_event_rules": str_to_bool(metadata.get('consent_event_rules', 'False')),
+                "consent_photography": str_to_bool(metadata.get('consent_photography', 'False')),
+                "consent_results_published": str_to_bool(metadata.get('consent_results_published', 'False')),
                 "bib_number": transaction['bib_number'],
                 "status": "confirmed"
             }
@@ -510,6 +583,19 @@ async def create_manual_registration(registration: RegistrationCreate):
         "user_email": registration.user_email,
         "user_name": registration.user_name,
         "user_phone": registration.user_phone,
+        "gender": registration.gender,
+        "dob": registration.dob,
+        "tshirt_size": registration.tshirt_size,
+        "marathon_experience": registration.marathon_experience,
+        "emergency_contact_name": registration.emergency_contact_name,
+        "emergency_contact": registration.emergency_contact,
+        "has_medical_condition": registration.has_medical_condition,
+        "medical_condition_details": registration.medical_condition_details,
+        "consent_physically_fit": registration.consent_physically_fit,
+        "consent_own_risk": registration.consent_own_risk,
+        "consent_event_rules": registration.consent_event_rules,
+        "consent_photography": registration.consent_photography,
+        "consent_results_published": registration.consent_results_published,
         "bib_number": f"BIB{str(uuid.uuid4())[:8].upper()}",
         "status": "confirmed"
     }

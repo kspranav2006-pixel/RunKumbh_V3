@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the updated RunKumbh website to verify: 1) Couple 3K Image Update, 2) Registration Modal Close Button, 3) Image Positioning on event cards"
+user_problem_statement: "Expand RunKumbh registration form to capture extensive participant details (DOB, Gender, T-shirt size, Marathon experience, Emergency contact, Medical conditions, Consent checkboxes). Update contact section with new organizer names (KS Pranav, Prajeet Gurlahosur) and add Google Maps link to venue location."
 
 frontend:
   - task: "Admin Login"
@@ -243,6 +243,42 @@ frontend:
         agent: "testing"
         comment: "All 6 event card images correctly use 'object-cover object-top' CSS classes, ensuring the upper portion of each image is displayed. Verified for: Open Men & Women 5K, Students/NCC/NSS 5K, Students/NCC/NSS/NCMC 3K, RVITM Staff 3K, Family Run 3K, and Couple Run 3K. All images display properly with consistent positioning."
 
+  - task: "Registration Form - Extended Fields (DOB, Gender, T-shirt, Medical, Consents)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Expanded registration form with 12+ new fields: Name, Gender (dropdown), DOB (date picker), Mobile, Email, T-shirt Size (dropdown: XS-XXL), Previous Marathon Experience (textarea), Emergency Contact Name, Emergency Contact Number, Medical Condition (radio: Yes/No with conditional textarea), and 5 Consent Checkboxes (Physically Fit, Own Risk, Event Rules, Photography, Results Published). All fields properly wired to registrationData state. Form submits all data to payment checkout API. NEEDS END-TO-END TESTING via testing agent."
+
+  - task: "Contact Section - Updated Names and Layout"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated contact section with new organizer names and improved layout. Changed from inline format to stacked layout with titles on separate lines: 'Lt. Raghu G M' (Event Manager), 'KS Pranav' (Event Coordinator), 'Prajeet Gurlahosur' (Event Coordinator). Also updated footer to match. NEEDS VISUAL VERIFICATION via screenshot or testing agent."
+
+  - task: "Location Section - Google Maps Link"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added clickable Google Maps link in Location section. Link text: 'Chaithanya Layout, 8th Phase, J. P. Nagar, Bengaluru, Kothnur, Karnataka 560083'. Styled with teal color, hover effect, and underline. Opens in new tab. NEEDS TESTING to verify link works correctly."
+
 backend:
   - task: "Admin Login API"
     implemented: true
@@ -268,6 +304,30 @@ backend:
         agent: "testing"
         comment: "Admin data fetch API works correctly. GET /api/admin/registrations returns events, registrations, transactions, and stats data successfully."
 
+  - task: "Registration Schema - Extended Fields Support"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "CRITICAL FIX: Updated backend models to accept 12+ new registration fields. Modified RegistrationCreate, Registration, and PaymentCheckoutRequest Pydantic models to include: gender, dob, tshirt_size, marathon_experience, emergency_contact_name, emergency_contact, has_medical_condition, medical_condition_details, consent_physically_fit, consent_own_risk, consent_event_rules, consent_photography, consent_results_published. Updated payment checkout endpoint to pass all fields in Stripe metadata (converted booleans to strings for Stripe compatibility). Updated payment status endpoint to extract fields from metadata and create complete registration with all participant data (with str_to_bool helper for consent fields). Verified backend accepts test payload successfully. NEEDS END-TO-END TESTING with frontend registration flow and database verification."
+
+  - task: "Manual Registration Creation - Extended Fields"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated manual registration creation endpoint (POST /api/admin/registrations) to handle all new fields. Admin can now create registrations with complete participant data including DOB, T-shirt size, medical info, and consents. NEEDS TESTING via admin panel."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
@@ -277,9 +337,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Couple 3K Event Card - Image Update"
-    - "Registration Modal - Close Button Functionality"
-    - "Event Cards - Image Positioning (object-top)"
+    - "Registration Form - Extended Fields (DOB, Gender, T-shirt, Medical, Consents)"
+    - "Registration Schema - Extended Fields Support"
+    - "Contact Section - Updated Names and Layout"
+    - "Location Section - Google Maps Link"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -293,3 +354,5 @@ agent_communication:
     message: "NEW TESTING COMPLETED: Tested updated RunKumbh website for three specific items: 1) Couple 3K Image Update - VERIFIED: New image is displaying correctly (URL: https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/5spb4ure_couple%203k%20run%20photo.jpg), shows silhouettes of couple running with object-top positioning. 2) Registration Modal Close Button - WORKING: X button in top right corner successfully opens and closes modal. 3) Image Positioning - ALL CORRECT: All 6 event cards use object-top positioning showing upper portions of images. All tests passed successfully with no issues found."
   - agent: "testing"
     message: "URGENT RE-TEST COMPLETED - Registration Modal Close Button: Conducted comprehensive testing of modal close functionality per user's urgent request. Tested across 5 scenarios: (1) X button closes modal on 3 different events - ALL PASSED, (2) Escape key closes modal - PASSED, (3) Form data resets after closing - PASSED. All 6 'Register & Pay Now' buttons found and tested. Modal implementation is robust with proper event handlers, z-index positioning, and state management. No JavaScript errors detected. 100% success rate across all test cases. Feature is production-ready and working perfectly."
+  - agent: "main"
+    message: "FORK CONTINUATION: Expanded registration form with 12+ new fields (DOB, Gender, T-shirt Size, Marathon Experience, Emergency Contact Name/Number, Medical Condition Yes/No + Details, 5 Consent Checkboxes). Updated backend schema (RegistrationCreate, Registration, PaymentCheckoutRequest models) to accept and store all new fields. Fixed Stripe metadata boolean-to-string conversion issue. Updated contact section with new names and layout: 'Lt. Raghu G M' (Event Manager), 'KS Pranav' (Event Coordinator), 'Prajeet Gurlahosur' (Event Coordinator) - titles now on separate lines. Added clickable Google Maps link in Location section. All changes need comprehensive testing."
