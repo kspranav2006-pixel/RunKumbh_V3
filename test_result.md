@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the RunKumbh Admin Page - verify login, manage events section, confirmed registrations section, payment transactions section, and edit event functionality"
+user_problem_statement: "Test the updated RunKumbh website to verify: 1) Couple 3K Image Update, 2) Registration Modal Close Button, 3) Image Positioning on event cards"
 
 frontend:
   - task: "Admin Login"
@@ -204,6 +204,42 @@ frontend:
         agent: "testing"
         comment: "Payment Transactions section displays correctly. Heading is visible, table shows 3 transactions with BIB numbers, names, emails, amounts, events, and payment status. Delete buttons (red) are visible in each row."
 
+  - task: "Couple 3K Event Card - Image Update"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Couple 3K event card displays the new uploaded image correctly. Image URL: https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/5spb4ure_couple%203k%20run%20photo.jpg. The image shows silhouettes of a couple running and uses object-top positioning to display the upper part of the image. Card title: 'Couple Run - 3K (Open)', Price: ₹799, Distance: 3 km."
+
+  - task: "Registration Modal - Close Button Functionality"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Registration modal close button (X) works perfectly. Modal opens when clicking 'Register & Pay Now' button on any event card. The X close button is located in the top right corner of the modal. Clicking the X button successfully closes the modal. Tested with shadcn Dialog component."
+
+  - task: "Event Cards - Image Positioning (object-top)"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "All 6 event card images correctly use 'object-cover object-top' CSS classes, ensuring the upper portion of each image is displayed. Verified for: Open Men & Women 5K, Students/NCC/NSS 5K, Students/NCC/NSS/NCMC 3K, RVITM Staff 3K, Family Run 3K, and Couple Run 3K. All images display properly with consistent positioning."
+
 backend:
   - task: "Admin Login API"
     implemented: true
@@ -232,13 +268,15 @@ backend:
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: true
   last_tested: "2026-04-17"
 
 test_plan:
   current_focus:
-    - "Add Event Button CSS Fix"
+    - "Couple 3K Event Card - Image Update"
+    - "Registration Modal - Close Button Functionality"
+    - "Event Cards - Image Positioning (object-top)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -248,3 +286,5 @@ agent_communication:
     message: "Completed comprehensive testing of RunKumbh Admin Page. Found 1 CRITICAL CSS bug: 'Add Event' button is invisible due to CSS styling (display:none, visibility:hidden, opacity:0). All other functionality works correctly including login, dashboard display, events table, edit functionality, registrations section, and transactions section. The Add Event modal itself works fine when triggered via JavaScript, so the issue is purely CSS-related visibility."
   - agent: "testing"
     message: "CSS BUG FIXED: Root cause identified in /app/frontend/src/App.css line 18. The CSS selector 'button:has(svg):last-child' was hiding ALL buttons with SVG icons that are last children in their container. This was meant to hide watermarks but was too broad. Replaced with specific selectors targeting only watermark elements. Both 'Add Event' and 'Add Registration' buttons are now visible and functional. Verified with browser automation test - buttons are clickable and modals open correctly."
+  - agent: "testing"
+    message: "NEW TESTING COMPLETED: Tested updated RunKumbh website for three specific items: 1) Couple 3K Image Update - VERIFIED: New image is displaying correctly (URL: https://customer-assets.emergentagent.com/job_kumbh-marathon/artifacts/5spb4ure_couple%203k%20run%20photo.jpg), shows silhouettes of couple running with object-top positioning. 2) Registration Modal Close Button - WORKING: X button in top right corner successfully opens and closes modal. 3) Image Positioning - ALL CORRECT: All 6 event cards use object-top positioning showing upper portions of images. All tests passed successfully with no issues found."
