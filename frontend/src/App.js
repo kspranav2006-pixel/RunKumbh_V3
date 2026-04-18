@@ -356,8 +356,21 @@ function EventsSection({ events, toast }) {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [registrationData, setRegistrationData] = useState({
     user_name: '',
+    gender: 'male',
+    dob: '',
+    user_phone: '',
     user_email: '',
-    user_phone: ''
+    tshirt_size: 'M',
+    marathon_experience: '',
+    emergency_contact_name: '',
+    emergency_contact: '',
+    has_medical_condition: 'no',
+    medical_condition_details: '',
+    consent_physically_fit: false,
+    consent_own_risk: false,
+    consent_event_rules: false,
+    consent_photography: false,
+    consent_results_published: false
   });
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -510,9 +523,9 @@ function EventsSection({ events, toast }) {
                         Complete your details to proceed to payment
                       </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleRegister} className="space-y-4">
+                    <form onSubmit={handleRegister} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                       <div>
-                        <Label htmlFor="user_name">Full Name</Label>
+                        <Label htmlFor="user_name">Full Name *</Label>
                         <Input
                           id="user_name"
                           required
@@ -520,18 +533,36 @@ function EventsSection({ events, toast }) {
                           onChange={(e) => setRegistrationData({ ...registrationData, user_name: e.target.value })}
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="user_email">Email</Label>
-                        <Input
-                          id="user_email"
-                          type="email"
-                          required
-                          value={registrationData.user_email}
-                          onChange={(e) => setRegistrationData({ ...registrationData, user_email: e.target.value })}
-                        />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="gender">Gender *</Label>
+                          <select
+                            id="gender"
+                            value={registrationData.gender}
+                            onChange={(e) => setRegistrationData({...registrationData, gender: e.target.value})}
+                            className="w-full px-3 py-2 border rounded-md"
+                            required
+                          >
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor="dob">Date of Birth *</Label>
+                          <Input
+                            id="dob"
+                            type="date"
+                            value={registrationData.dob}
+                            onChange={(e) => setRegistrationData({...registrationData, dob: e.target.value})}
+                            required
+                          />
+                        </div>
                       </div>
+
                       <div>
-                        <Label htmlFor="user_phone">Phone Number</Label>
+                        <Label htmlFor="user_phone">Mobile Number *</Label>
                         <Input
                           id="user_phone"
                           type="tel"
@@ -540,6 +571,165 @@ function EventsSection({ events, toast }) {
                           onChange={(e) => setRegistrationData({ ...registrationData, user_phone: e.target.value })}
                         />
                       </div>
+
+                      <div>
+                        <Label htmlFor="user_email">Email *</Label>
+                        <Input
+                          id="user_email"
+                          type="email"
+                          required
+                          value={registrationData.user_email}
+                          onChange={(e) => setRegistrationData({ ...registrationData, user_email: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="tshirt">T-shirt Size *</Label>
+                        <select
+                          id="tshirt"
+                          value={registrationData.tshirt_size}
+                          onChange={(e) => setRegistrationData({...registrationData, tshirt_size: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        >
+                          <option value="XS">XS</option>
+                          <option value="S">S</option>
+                          <option value="M">M</option>
+                          <option value="L">L</option>
+                          <option value="XL">XL</option>
+                          <option value="XXL">XXL</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="experience">Previous Marathon Experience</Label>
+                        <textarea
+                          id="experience"
+                          value={registrationData.marathon_experience}
+                          onChange={(e) => setRegistrationData({...registrationData, marathon_experience: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-md min-h-[60px]"
+                          placeholder="E.g., Completed 5K in 2025, First time runner, etc."
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="emergency_name">Emergency Contact Name *</Label>
+                        <Input
+                          id="emergency_name"
+                          value={registrationData.emergency_contact_name}
+                          onChange={(e) => setRegistrationData({...registrationData, emergency_contact_name: e.target.value})}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="emergency_phone">Emergency Contact Number *</Label>
+                        <Input
+                          id="emergency_phone"
+                          type="tel"
+                          value={registrationData.emergency_contact}
+                          onChange={(e) => setRegistrationData({...registrationData, emergency_contact: e.target.value})}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="mb-2 block">Medical Condition *</Label>
+                        <p className="text-sm text-gray-600 mb-3">Do you have any medical condition organizers should know about?</p>
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="medical"
+                              value="no"
+                              checked={registrationData.has_medical_condition === 'no'}
+                              onChange={(e) => setRegistrationData({...registrationData, has_medical_condition: e.target.value, medical_condition_details: ''})}
+                              className="w-4 h-4"
+                              required
+                            />
+                            <span>No</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="medical"
+                              value="yes"
+                              checked={registrationData.has_medical_condition === 'yes'}
+                              onChange={(e) => setRegistrationData({...registrationData, has_medical_condition: e.target.value})}
+                              className="w-4 h-4"
+                            />
+                            <span>Yes</span>
+                          </label>
+                        </div>
+                        {registrationData.has_medical_condition === 'yes' && (
+                          <div className="mt-3">
+                            <Label htmlFor="medical_details">Please specify *</Label>
+                            <textarea
+                              id="medical_details"
+                              value={registrationData.medical_condition_details}
+                              onChange={(e) => setRegistrationData({...registrationData, medical_condition_details: e.target.value})}
+                              className="w-full px-3 py-2 border rounded-md min-h-[60px] mt-2"
+                              placeholder="E.g., Asthma, Diabetes, Injury, Heart condition"
+                              required
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t pt-4 space-y-3">
+                        <Label className="text-base font-semibold block">Consent (All required) *</Label>
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={registrationData.consent_physically_fit}
+                            onChange={(e) => setRegistrationData({...registrationData, consent_physically_fit: e.target.checked})}
+                            className="mt-1 w-4 h-4"
+                            required
+                          />
+                          <span className="text-sm">I confirm I am physically fit to participate.</span>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={registrationData.consent_own_risk}
+                            onChange={(e) => setRegistrationData({...registrationData, consent_own_risk: e.target.checked})}
+                            className="mt-1 w-4 h-4"
+                            required
+                          />
+                          <span className="text-sm">I understand participation is at my own risk.</span>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={registrationData.consent_event_rules}
+                            onChange={(e) => setRegistrationData({...registrationData, consent_event_rules: e.target.checked})}
+                            className="mt-1 w-4 h-4"
+                            required
+                          />
+                          <span className="text-sm">I agree to event rules and instructions.</span>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={registrationData.consent_photography}
+                            onChange={(e) => setRegistrationData({...registrationData, consent_photography: e.target.checked})}
+                            className="mt-1 w-4 h-4"
+                            required
+                          />
+                          <span className="text-sm">I consent to photography/video recording during event.</span>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={registrationData.consent_results_published}
+                            onChange={(e) => setRegistrationData({...registrationData, consent_results_published: e.target.checked})}
+                            className="mt-1 w-4 h-4"
+                            required
+                          />
+                          <span className="text-sm">I agree my race timings/results may be published.</span>
+                        </label>
+                      </div>
+
                       <Button
                         type="submit"
                         className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6"
