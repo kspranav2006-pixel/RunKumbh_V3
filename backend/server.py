@@ -294,12 +294,14 @@ BIB_TEMPLATE_PATH = ROOT_DIR / "assets" / "bib_template.png"
 _BIB_PILL = {"bounds": (220, 257, 770, 441), "fill": (217, 234, 211)}
 _BLOOD_PILL = {"bounds": (191, 613, 386, 687), "fill": (136, 8, 8)}
 _BARCODE_PILL = {"bounds": (546, 613, 871, 687), "fill": (217, 234, 211)}
+# Top-right light-green banner area (for the event title)
+_EVENT_BANNER = {"bounds": (500, 30, 930, 180)}
 
 
 def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A+") -> str:
-    """Render BIB card by overlaying BIB number, blood group and barcode onto the branded
-    template image. Everything else in the template (logos, banners, flag, background)
-    is preserved pixel-for-pixel."""
+    """Render BIB card by overlaying BIB number, event title, blood group and barcode
+    onto the branded template image. Everything else in the template (logos, banner,
+    background) is preserved pixel-for-pixel."""
     img = Image.open(BIB_TEMPLATE_PATH).convert("RGB")
     draw = ImageDraw.Draw(img)
 
@@ -312,6 +314,19 @@ def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A
 
     def _font(size):
         return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
+
+    # Event title — centered inside the top-right green banner
+    event_label = (category or "").strip() or "Event"
+    ex1, ey1, ex2, ey2 = _EVENT_BANNER["bounds"]
+    event_center = ((ex1 + ex2) // 2, (ey1 + ey2) // 2)
+    max_event_w, max_event_h = (ex2 - ex1) - 30, (ey2 - ey1) - 20
+    event_size = 72
+    while event_size > 22:
+        bb = draw.textbbox((0, 0), event_label, font=_font(event_size), anchor="mm")
+        if (bb[2] - bb[0]) <= max_event_w and (bb[3] - bb[1]) <= max_event_h:
+            break
+        event_size -= 4
+    draw.text(event_center, event_label, fill="#FFFFFF", font=_font(event_size), anchor="mm")
 
     # BIB number — large, centered inside the big cream pill
     bx1, by1, bx2, by2 = _BIB_PILL["bounds"]
