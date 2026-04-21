@@ -1097,6 +1097,25 @@ function AdminPage({ toast }) {
     setShowDetailsModal(true);
   };
 
+  const handleResendEmail = async (regId) => {
+    try {
+      const response = await axios.post(`${API}/admin/registrations/${regId}/send-email`);
+      toast({
+        title: response.data.sent ? 'Email Sent' : 'Email Failed',
+        description: response.data.sent
+          ? `BIB card emailed to ${response.data.email}`
+          : 'Could not send email. Check backend logs / Gmail credentials.',
+        variant: response.data.sent ? 'default' : 'destructive',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to send email',
+        variant: 'destructive',
+      });
+    }
+  };
+
   useEffect(() => {
     if (authenticated) {
       fetchData();
@@ -1622,13 +1641,45 @@ function AdminPage({ toast }) {
                       </select>
                     </td>
                     <td className="p-4">
-                      <button
-                        onClick={() => handleDeleteRegistration(reg.id)}
-                        className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleViewDetails(reg)}
+                          data-testid={`view-details-${reg.bib_number}`}
+                          className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          title="View Details & BIB Preview"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleDownloadBibCard(reg.bib_card, reg.bib_number)}
+                          data-testid={`download-bib-${reg.bib_number}`}
+                          disabled={!reg.bib_card}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          title={reg.bib_card ? "Download BIB Card" : "BIB Card not available"}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                          BIB
+                        </button>
+                        <button
+                          onClick={() => handleResendEmail(reg.id)}
+                          data-testid={`resend-email-${reg.bib_number}`}
+                          disabled={!reg.bib_card}
+                          className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          title="Resend BIB Card Email"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                          Email
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRegistration(reg.id)}
+                          data-testid={`delete-registration-${reg.bib_number}`}
+                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          title="Delete Registration"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2145,6 +2196,138 @@ function AdminPage({ toast }) {
               ) : (
                 <div className="bg-gray-50 p-8 rounded-lg text-center"><p className="text-xl text-gray-600">Enter BIB to start</p></div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Registration Details Modal with BIB Preview */}
+      {showDetailsModal && selectedRegistration && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50" data-testid="details-modal">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-blue-600 text-white px-6 py-4 flex justify-between items-center rounded-t-xl z-10">
+              <div>
+                <h3 className="text-xl font-bold">Registration Details</h3>
+                <p className="text-sm opacity-90 font-mono">BIB: {selectedRegistration.bib_number}</p>
+              </div>
+              <button
+                onClick={() => { setShowDetailsModal(false); setSelectedRegistration(null); }}
+                data-testid="close-details-modal"
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* BIB Card Preview */}
+              <div>
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/></svg>
+                  BIB Card Preview
+                </h4>
+                {selectedRegistration.bib_card ? (
+                  <div className="border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                    <img
+                      src={selectedRegistration.bib_card}
+                      alt={`BIB ${selectedRegistration.bib_number}`}
+                      data-testid="bib-card-preview-image"
+                      className="w-full h-auto"
+                    />
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center bg-gray-50">
+                    <p className="text-gray-500">BIB Card not generated yet.</p>
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleDownloadBibCard(selectedRegistration.bib_card, selectedRegistration.bib_number)}
+                    disabled={!selectedRegistration.bib_card}
+                    data-testid="modal-download-bib"
+                    className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
+                    Download
+                  </button>
+                  <button
+                    onClick={() => handleResendEmail(selectedRegistration.id)}
+                    disabled={!selectedRegistration.bib_card}
+                    data-testid="modal-resend-email"
+                    className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Email It
+                  </button>
+                </div>
+              </div>
+
+              {/* Participant Info */}
+              <div>
+                <h4 className="font-bold text-gray-800 mb-3">Participant Information</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Name</span>
+                    <span className="col-span-2 font-semibold text-gray-800">{selectedRegistration.user_name}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Email</span>
+                    <span className="col-span-2 text-gray-800 break-all">{selectedRegistration.user_email}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Phone</span>
+                    <span className="col-span-2 text-gray-800">{selectedRegistration.user_phone}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Event</span>
+                    <span className="col-span-2 text-gray-800">{getEventName(selectedRegistration.event_id)}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Gender</span>
+                    <span className="col-span-2 capitalize text-gray-800">{selectedRegistration.gender || '—'}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">DOB</span>
+                    <span className="col-span-2 text-gray-800">{selectedRegistration.dob || '—'}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">T-Shirt</span>
+                    <span className="col-span-2 text-gray-800">{selectedRegistration.tshirt_size || '—'}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Emergency</span>
+                    <span className="col-span-2 text-gray-800">
+                      {selectedRegistration.emergency_contact_name || '—'}
+                      {selectedRegistration.emergency_contact && ` · ${selectedRegistration.emergency_contact}`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Medical</span>
+                    <span className="col-span-2 text-gray-800">
+                      {selectedRegistration.has_medical_condition === 'yes'
+                        ? (selectedRegistration.medical_condition_details || 'Yes')
+                        : 'None'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pb-2 border-b">
+                    <span className="text-gray-500">Status</span>
+                    <span className="col-span-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        selectedRegistration.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        selectedRegistration.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>{selectedRegistration.status}</span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <span className="text-gray-500">Check-in</span>
+                    <span className="col-span-2 text-gray-800">
+                      {selectedRegistration.checked_in ? '✅ Checked In' : '⏳ Pending'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

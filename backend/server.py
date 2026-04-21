@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+from email_service import send_bib_email
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -657,8 +658,20 @@ async def get_payment_status(request: Request, session_id: str):
                 {"$set": {"bib_number": bib_number}}
             )
             
-            # TODO: Send confirmation email here with BIB card attached
-            # Email will be sent with BIB number and BIB card image
+            # Send BIB card email to participant (best-effort, non-blocking of response)
+            try:
+                event_title = event.get('title', 'Monsoon Run 2.0') if event else 'Monsoon Run 2.0'
+                event_date = event.get('date', '30th May 2026') if event else '30th May 2026'
+                send_bib_email(
+                    to_email=transaction['user_email'],
+                    user_name=transaction['user_name'],
+                    bib_number=bib_number,
+                    bib_card_data_url=bib_card,
+                    event_title=event_title,
+                    event_date=event_date,
+                )
+            except Exception as e:
+                logger.error(f"BIB email dispatch failed: {e}")
     
     return {
         "status": checkout_status.status,
@@ -833,6 +846,21 @@ async def create_manual_registration(registration: RegistrationCreate):
     doc['registration_date'] = doc['registration_date'].isoformat()
     
     await db.registrations.insert_one(doc)
+    
+    # Send BIB card email to participant (best-effort)
+    try:
+        event_title = event.get('title', 'Monsoon Run 2.0') if event else 'Monsoon Run 2.0'
+        event_date = event.get('date', '30th May 2026') if event else '30th May 2026'
+        send_bib_email(
+            to_email=registration.user_email,
+            user_name=registration.user_name,
+            bib_number=bib_number,
+            bib_card_data_url=bib_card,
+            event_title=event_title,
+            event_date=event_date,
+        )
+    except Exception as e:
+        logger.error(f"BIB email dispatch (manual) failed: {e}")
     
     return {"message": "Registration created successfully", "registration": reg_obj}
 
@@ -1098,6 +1126,43 @@ async def get_registration_by_bib(bib_number: str):
     return {
         "registration": registration,
         "event": event
+    }
+
+@api_router.post("/admin/registrations/{registration_id}/send-email")
+async def resend_bib_email(registration_id: str):
+    """Resend BIB card email to a participant."""
+    registration = await db.registrations.find_one({"id": registration_id}, {"_id": 0})
+    if not registration:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    
+    bib_card = registration.get('bib_card')
+    if not bib_card:
+        # Regenerate if missing
+        event = await db.events.find_one({"id": registration['event_id']}, {"_id": 0})
+        event_category = event.get('category', 'Event') if event else 'Event'
+        bib_card = generate_bib_card(registration['bib_number'], event_category)
+        await db.registrations.update_one(
+            {"id": registration_id},
+            {"$set": {"bib_card": bib_card}}
+        )
+    
+    event = await db.events.find_one({"id": registration['event_id']}, {"_id": 0})
+    event_title = event.get('title', 'Monsoon Run 2.0') if event else 'Monsoon Run 2.0'
+    event_date = event.get('date', '30th May 2026') if event else '30th May 2026'
+    
+    sent = send_bib_email(
+        to_email=registration['user_email'],
+        user_name=registration['user_name'],
+        bib_number=registration['bib_number'],
+        bib_card_data_url=bib_card,
+        event_title=event_title,
+        event_date=event_date,
+    )
+    
+    return {
+        "sent": sent,
+        "email": registration['user_email'],
+        "bib_number": registration['bib_number'],
     }
 
 class BulkEmailRequest(BaseModel):
