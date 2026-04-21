@@ -15,6 +15,9 @@ import jwt
 import qrcode
 import io
 import base64
+from PIL import Image, ImageDraw, ImageFont
+import barcode
+from barcode.writer import ImageWriter
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 
 ROOT_DIR = Path(__file__).parent
@@ -138,6 +141,8 @@ class Registration(BaseModel):
     status: str = "confirmed"
     bib_number: str
     qr_code: Optional[str] = None
+    bib_card: Optional[str] = None
+    blood_group: str = "A+"
     checked_in: bool = False
     checked_in_at: Optional[datetime] = None
 
@@ -281,6 +286,76 @@ def generate_qr_code(bib_number: str) -> str:
     img_base64 = base64.b64encode(buffer.getvalue()).decode()
     
     return f"data:image/png;base64,{img_base64}"
+
+def generate_bib_card(bib_number: str, category: str, blood_group: str = "A+") -> str:
+    """Generate professional BIB card image for t-shirt printing"""
+    width, height = 1200, 1200
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    # Gradient background (teal to blue)
+    for y in range(height):
+        r = int(13 + (20 - 13) * (y / height))
+        g = int(115 + (174 - 115) * (y / height))
+        b = int(119 + (242 - 119) * (y / height))
+        draw.rectangle([(0, y), (width, y + 1)], fill=(r, g, b))
+    
+    try:
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+        category_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 70)
+        bib_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 200)
+        blood_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
+    except:
+        title_font = ImageFont.load_default()
+        category_font = ImageFont.load_default()
+        bib_font = ImageFont.load_default()
+        blood_font = ImageFont.load_default()
+    
+    # Top banner
+    points = [(0, 0), (width, 0), (width, 200), (width - 150, 200)]
+    draw.polygon(points, fill='#FFFFFF')
+    draw.text((100, 60), "RunKumbh", fill='#0D7377', font=title_font)
+    
+    # Category
+    cat_bg_points = [(width - 500, 0), (width, 0), (width, 200), (width - 350, 200)]
+    draw.polygon(cat_bg_points, fill='#FF6B35')
+    draw.text((width - 480, 80), category, fill='#FFFFFF', font=category_font, anchor='lm')
+    
+    # BIB number
+    bib_box_width, bib_box_height = 800, 350
+    bib_box_x, bib_box_y = (width - bib_box_width) // 2, (height - bib_box_height) // 2
+    draw.rounded_rectangle([(bib_box_x, bib_box_y), (bib_box_x + bib_box_width, bib_box_y + bib_box_height)], radius=50, fill='#F5F5DC')
+    
+    bbox = draw.textbbox((0, 0), bib_number, font=bib_font)
+    text_x = bib_box_x + (bib_box_width - (bbox[2] - bbox[0])) // 2
+    text_y = bib_box_y + (bib_box_height - (bbox[3] - bbox[1])) // 2
+    draw.text((text_x, text_y), bib_number, fill='#000000', font=bib_font)
+    
+    # Blood group
+    blood_box_width, blood_box_height = 200, 100
+    blood_box_x, blood_box_y = (width - blood_box_width) // 2, height - 250
+    draw.rounded_rectangle([(blood_box_x, blood_box_y), (blood_box_x + blood_box_width, blood_box_y + blood_box_height)], radius=20, fill='#C41E3A')
+    bbox = draw.textbbox((0, 0), blood_group, font=blood_font)
+    text_x = blood_box_x + (blood_box_width - (bbox[2] - bbox[0])) // 2
+    draw.text((text_x, blood_box_y + 20), blood_group, fill='#FFFFFF', font=blood_font)
+    
+    # Barcode
+    try:
+        EAN = barcode.get_barcode_class('code128')
+        ean = EAN(bib_number, writer=ImageWriter())
+        barcode_buffer = io.BytesIO()
+        ean.write(barcode_buffer, options={'write_text': False, 'module_height': 8, 'module_width': 0.3})
+        barcode_buffer.seek(0)
+        barcode_img = Image.open(barcode_buffer)
+        barcode_img = barcode_img.resize((500, 120))
+        img.paste(barcode_img, (width - 550, height - 150))
+    except:
+        pass
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     try:
@@ -530,6 +605,13 @@ async def get_payment_status(request: Request, session_id: str):
             # Generate QR code for the BIB number
             qr_code = generate_qr_code(bib_number)
             
+            # Get event details for BIB card
+            event = await db.events.find_one({"id": transaction['event_id']}, {"_id": 0})
+            event_category = event.get('category', 'Event') if event else 'Event'
+            
+            # Generate BIB card for t-shirt printing
+            bib_card = generate_bib_card(bib_number, event_category)
+            
             # Create registration with all participant data from metadata
             # Convert string boolean values back to actual booleans
             def str_to_bool(val):
@@ -558,6 +640,8 @@ async def get_payment_status(request: Request, session_id: str):
                 "consent_results_published": str_to_bool(metadata.get('consent_results_published', 'False')),
                 "bib_number": bib_number,
                 "qr_code": qr_code,
+                "bib_card": bib_card,
+                "blood_group": "A+",
                 "status": "confirmed"
             }
             
@@ -573,8 +657,8 @@ async def get_payment_status(request: Request, session_id: str):
                 {"$set": {"bib_number": bib_number}}
             )
             
-            # TODO: Send confirmation email here
-            # Email will be sent with BIB number and event details
+            # TODO: Send confirmation email here with BIB card attached
+            # Email will be sent with BIB number and BIB card image
     
     return {
         "status": checkout_status.status,
@@ -711,6 +795,13 @@ async def create_manual_registration(registration: RegistrationCreate):
     # Generate QR code
     qr_code = generate_qr_code(bib_number)
     
+    # Get event details for BIB card
+    event = await db.events.find_one({"id": registration.event_id}, {"_id": 0})
+    event_category = event.get('category', 'Event') if event else 'Event'
+    
+    # Generate BIB card
+    bib_card = generate_bib_card(bib_number, event_category)
+    
     reg_data = {
         "user_id": str(uuid.uuid4()),
         "event_id": registration.event_id,
@@ -732,6 +823,8 @@ async def create_manual_registration(registration: RegistrationCreate):
         "consent_results_published": registration.consent_results_published,
         "bib_number": bib_number,
         "qr_code": qr_code,
+        "bib_card": bib_card,
+        "blood_group": "A+",
         "status": "confirmed"
     }
     
