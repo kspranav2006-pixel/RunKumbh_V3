@@ -1074,6 +1074,28 @@ function AdminPage({ toast }) {
   const [isScanning, setIsScanning] = useState(false);
   const [selectedRegistration, setSelectedRegistration] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  const handleDownloadBibCard = (bibCard, bibNumber) => {
+    if (!bibCard) {
+      toast({ title: 'Error', description: 'BIB card not available', variant: 'destructive' });
+      return;
+    }
+    
+    // Convert base64 to blob and download
+    const link = document.createElement('a');
+    link.href = bibCard;
+    link.download = `BIB_${bibNumber}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: 'Success', description: 'BIB card downloaded!' });
+  };
+
+  const handleViewDetails = (registration) => {
+    setSelectedRegistration(registration);
+    setShowDetailsModal(true);
+  };
 
   useEffect(() => {
     if (authenticated) {
