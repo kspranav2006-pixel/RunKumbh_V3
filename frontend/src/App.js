@@ -1047,8 +1047,18 @@ function AdminPage({ toast }) {
     user_email: '',
     user_phone: '',
     gender: 'male',
-    blood_group: 'A+',
-    emergency_contact: ''
+    dob: '',
+    tshirt_size: 'M',
+    marathon_experience: '',
+    emergency_contact_name: '',
+    emergency_contact: '',
+    has_medical_condition: 'no',
+    medical_condition_details: '',
+    consent_physically_fit: true,
+    consent_own_risk: true,
+    consent_event_rules: true,
+    consent_photography: true,
+    consent_results_published: true
   });
 
   // Search and Filter states
@@ -1810,16 +1820,16 @@ function AdminPage({ toast }) {
       {/* Add Registration Modal */}
       {showAddRegDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Add Registration</h3>
+              <h3 className="text-xl font-bold">Add Manual Registration</h3>
               <button onClick={() => setShowAddRegDialog(false)} className="text-gray-500 hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
             </div>
             <form onSubmit={handleAddRegistration} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Event</label>
+                <label className="block text-sm font-medium mb-1">Event *</label>
                 <select
                   value={regForm.event_id}
                   onChange={(e) => setRegForm({...regForm, event_id: e.target.value})}
@@ -1832,35 +1842,147 @@ function AdminPage({ toast }) {
                   ))}
                 </select>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    value={regForm.user_name}
+                    onChange={(e) => setRegForm({...regForm, user_name: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Gender *</label>
+                  <select
+                    value={regForm.gender}
+                    onChange={(e) => setRegForm({...regForm, gender: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={regForm.user_email}
+                    onChange={(e) => setRegForm({...regForm, user_email: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone *</label>
+                  <input
+                    type="tel"
+                    value={regForm.user_phone}
+                    onChange={(e) => setRegForm({...regForm, user_phone: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Date of Birth *</label>
+                  <input
+                    type="date"
+                    value={regForm.dob}
+                    onChange={(e) => setRegForm({...regForm, dob: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">T-Shirt Size *</label>
+                  <select
+                    value={regForm.tshirt_size}
+                    onChange={(e) => setRegForm({...regForm, tshirt_size: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  >
+                    <option value="XS">XS</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="XXL">XXL</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Emergency Contact Name *</label>
+                  <input
+                    type="text"
+                    value={regForm.emergency_contact_name}
+                    onChange={(e) => setRegForm({...regForm, emergency_contact_name: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Emergency Contact Number *</label>
+                  <input
+                    type="tel"
+                    value={regForm.emergency_contact}
+                    onChange={(e) => setRegForm({...regForm, emergency_contact: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+              </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Name</label>
-                <input
-                  type="text"
-                  value={regForm.user_name}
-                  onChange={(e) => setRegForm({...regForm, user_name: e.target.value})}
+                <label className="block text-sm font-medium mb-1">Previous Marathon Experience</label>
+                <textarea
+                  value={regForm.marathon_experience}
+                  onChange={(e) => setRegForm({...regForm, marathon_experience: e.target.value})}
                   className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
-                  required
+                  rows="2"
+                  placeholder="e.g., Completed 5K in 2025"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <input
-                  type="email"
-                  value={regForm.user_email}
-                  onChange={(e) => setRegForm({...regForm, user_email: e.target.value})}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
-                <input
-                  type="tel"
-                  value={regForm.user_phone}
-                  onChange={(e) => setRegForm({...regForm, user_phone: e.target.value})}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
-                  required
-                />
+                <label className="block text-sm font-medium mb-2">Medical Condition *</label>
+                <div className="flex gap-4 mb-2">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="no"
+                      checked={regForm.has_medical_condition === 'no'}
+                      onChange={(e) => setRegForm({...regForm, has_medical_condition: e.target.value, medical_condition_details: ''})}
+                      className="mr-2"
+                    />
+                    No
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="yes"
+                      checked={regForm.has_medical_condition === 'yes'}
+                      onChange={(e) => setRegForm({...regForm, has_medical_condition: e.target.value})}
+                      className="mr-2"
+                    />
+                    Yes
+                  </label>
+                </div>
+                {regForm.has_medical_condition === 'yes' && (
+                  <textarea
+                    value={regForm.medical_condition_details}
+                    onChange={(e) => setRegForm({...regForm, medical_condition_details: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    rows="2"
+                    placeholder="Please specify medical condition"
+                    required
+                  />
+                )}
               </div>
               <button
                 type="submit"
