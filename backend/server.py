@@ -288,20 +288,19 @@ def generate_qr_code(bib_number: str) -> str:
     
     return f"data:image/png;base64,{img_base64}"
 
-def generate_bib_card(bib_number: str, category: str, blood_group: str = "A+") -> str:
-    """Generate professional BIB card image for t-shirt printing"""
-    width, height = 1200, 1200
-    img = Image.new('RGB', (width, height), '#FFFFFF')
+BIB_TEMPLATE_PATH = ROOT_DIR / "assets" / "bib_template.png"
+
+# Pill geometry sampled from the template (992x699) — cream pill (BIB) and red pill (BLOOD)
+_BIB_PILL = {"bounds": (220, 257, 770, 441), "fill": (217, 234, 211)}
+_BLOOD_PILL = {"bounds": (304, 612, 496, 677), "fill": (136, 8, 8)}
+
+
+def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A+") -> str:
+    """Render BIB card by overlaying BIB number and blood group on the provided template image.
+    Layout, dimensions and all other design elements come from the template untouched."""
+    img = Image.open(BIB_TEMPLATE_PATH).convert("RGB")
     draw = ImageDraw.Draw(img)
-    
-    # Gradient background (teal to blue)
-    for y in range(height):
-        r = int(13 + (20 - 13) * (y / height))
-        g = int(115 + (174 - 115) * (y / height))
-        b = int(119 + (242 - 119) * (y / height))
-        draw.rectangle([(0, y), (width, y + 1)], fill=(r, g, b))
-    
-    # Locate an available bold font (DejaVu isn't installed on this image)
+
     font_candidates = [
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -310,82 +309,45 @@ def generate_bib_card(bib_number: str, category: str, blood_group: str = "A+") -
     font_path = next((p for p in font_candidates if os.path.exists(p)), None)
 
     def _font(size):
-        if font_path:
-            return ImageFont.truetype(font_path, size)
-        return ImageFont.load_default()
+        return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
 
-    title_font = _font(120)
-    category_font = _font(70)
-    bib_font = _font(260)          # fits 6-char BIB (e.g. OSM001) nicely within 1000px box
-    blood_label_font = _font(42)
-    blood_font = _font(140)        # much larger
+    # Cover existing placeholder text inside each pill with the pill's fill color
+    bx1, by1, bx2, by2 = _BIB_PILL["bounds"]
+    draw.rounded_rectangle(
+        [(bx1 + 6, by1 + 6), (bx2 - 6, by2 - 6)],
+        radius=40, fill=_BIB_PILL["fill"]
+    )
+    rx1, ry1, rx2, ry2 = _BLOOD_PILL["bounds"]
+    draw.rounded_rectangle(
+        [(rx1 + 4, ry1 + 4), (rx2 - 4, ry2 - 4)],
+        radius=25, fill=_BLOOD_PILL["fill"]
+    )
 
-    # Top banner
-    points = [(0, 0), (width, 0), (width, 200), (width - 150, 200)]
-    draw.polygon(points, fill='#FFFFFF')
-    draw.text((100, 60), "RunKumbh", fill='#0D7377', font=title_font)
-    
-    # Category
-    cat_bg_points = [(width - 500, 0), (width, 0), (width, 200), (width - 350, 200)]
-    draw.polygon(cat_bg_points, fill='#FF6B35')
-    draw.text((width - 480, 80), category, fill='#FFFFFF', font=category_font, anchor='lm')
-    
-    # BIB number (large, centered, upper half of card)
-    bib_box_width, bib_box_height = 1000, 500
-    bib_box_x = (width - bib_box_width) // 2
-    bib_box_y = 260
-    draw.rounded_rectangle(
-        [(bib_box_x, bib_box_y), (bib_box_x + bib_box_width, bib_box_y + bib_box_height)],
-        radius=50, fill='#F5F5DC'
-    )
-    bbox = draw.textbbox((0, 0), bib_number, font=bib_font)
-    bib_w = bbox[2] - bbox[0]
-    bib_h = bbox[3] - bbox[1]
-    text_x = bib_box_x + (bib_box_width - bib_w) // 2 - bbox[0]
-    text_y = bib_box_y + (bib_box_height - bib_h) // 2 - bbox[1]
-    draw.text((text_x, text_y), bib_number, fill='#0D7377', font=bib_font)
-    
-    # Blood group — placed RIGHT BELOW the BIB number box
-    blood_box_width, blood_box_height = 420, 220
-    blood_box_x = (width - blood_box_width) // 2
-    blood_box_y = bib_box_y + bib_box_height + 40
-    draw.rounded_rectangle(
-        [(blood_box_x, blood_box_y), (blood_box_x + blood_box_width, blood_box_y + blood_box_height)],
-        radius=30, fill='#C41E3A'
-    )
-    # Small label "BLOOD GROUP"
-    label_text = "BLOOD GROUP"
-    lbbox = draw.textbbox((0, 0), label_text, font=blood_label_font)
-    lw = lbbox[2] - lbbox[0]
-    draw.text(
-        (blood_box_x + (blood_box_width - lw) // 2 - lbbox[0], blood_box_y + 20 - lbbox[1]),
-        label_text, fill='#FFFFFF', font=blood_label_font
-    )
-    # Actual blood group value
-    bbox = draw.textbbox((0, 0), blood_group, font=blood_font)
-    bw = bbox[2] - bbox[0]
-    bh = bbox[3] - bbox[1]
-    draw.text(
-        (blood_box_x + (blood_box_width - bw) // 2 - bbox[0],
-         blood_box_y + 75 + (blood_box_height - 75 - bh) // 2 - bbox[1]),
-        blood_group, fill='#FFFFFF', font=blood_font
-    )
-    
-    # Barcode
-    try:
-        EAN = barcode.get_barcode_class('code128')
-        ean = EAN(bib_number, writer=ImageWriter())
-        barcode_buffer = io.BytesIO()
-        ean.write(barcode_buffer, options={'write_text': False, 'module_height': 8, 'module_width': 0.3})
-        barcode_buffer.seek(0)
-        barcode_img = Image.open(barcode_buffer)
-        barcode_img = barcode_img.resize((500, 100))
-        img.paste(barcode_img, ((width - 500) // 2, height - 130))
-    except Exception:
-        pass
-    
+    bib_center = ((bx1 + bx2) // 2, (by1 + by2) // 2)
+    blood_center = ((rx1 + rx2) // 2, (ry1 + ry2) // 2)
+
+    # Auto-fit BIB font — usable pill area is ~530x165 inside margins
+    max_bib_w, max_bib_h = 480, 140
+    bib_size = 160
+    while bib_size > 40:
+        bbox = draw.textbbox((0, 0), bib_number, font=_font(bib_size), anchor="mm")
+        if (bbox[2] - bbox[0]) <= max_bib_w and (bbox[3] - bbox[1]) <= max_bib_h:
+            break
+        bib_size -= 6
+    draw.text(bib_center, bib_number, fill="#000000", font=_font(bib_size), anchor="mm")
+
+    # Auto-fit blood group font — usable area ~170x50
+    max_blood_w, max_blood_h = 160, 50
+    blood_size = 54
+    while blood_size > 18:
+        bbox = draw.textbbox((0, 0), blood_group, font=_font(blood_size), anchor="mm")
+        if (bbox[2] - bbox[0]) <= max_blood_w and (bbox[3] - bbox[1]) <= max_blood_h:
+            break
+        blood_size -= 3
+    draw.text(blood_center, blood_group, fill="#FFFFFF", font=_font(blood_size), anchor="mm")
+
     buffer = io.BytesIO()
-    img.save(buffer, format='PNG')
+    img.save(buffer, format="PNG")
     buffer.seek(0)
     return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
 
