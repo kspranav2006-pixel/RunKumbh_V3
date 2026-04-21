@@ -140,7 +140,7 @@ class Registration(BaseModel):
     consent_results_published: bool
     registration_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "confirmed"
-    bib_number: str
+    bib_number: str = ""
     qr_code: Optional[str] = None
     bib_card: Optional[str] = None
     blood_group: str = "A+"
@@ -489,6 +489,69 @@ async def get_contacts():
         if isinstance(contact.get('submitted_at'), str):
             contact['submitted_at'] = datetime.fromisoformat(contact['submitted_at'])
     return contacts
+
+# Pending Registration (SAP payment flow — no Stripe)
+@api_router.post("/register/pending")
+async def create_pending_registration(payload: PaymentCheckoutRequest):
+    """Capture the full registration locally with status='pending_payment' and return
+    the external SAP payment portal URL. The admin later flips the status to
+    'confirmed' in the admin panel, which triggers BIB generation + email."""
+    event = await db.events.find_one({"id": payload.event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Block duplicates (any status) for same event + email
+    existing = await db.registrations.find_one({
+        "event_id": payload.event_id,
+        "user_email": payload.user_email,
+    })
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"This email is already registered for {event.get('title', 'this event')}. If you haven't paid yet, please complete payment on the portal."
+        )
+
+    reg_data = {
+        "user_id": str(uuid.uuid4()),
+        "event_id": payload.event_id,
+        "user_email": payload.user_email,
+        "user_name": payload.user_name,
+        "user_phone": payload.user_phone,
+        "gender": payload.gender,
+        "dob": payload.dob,
+        "tshirt_size": payload.tshirt_size,
+        "marathon_experience": payload.marathon_experience,
+        "emergency_contact_name": payload.emergency_contact_name,
+        "emergency_contact": payload.emergency_contact,
+        "has_medical_condition": payload.has_medical_condition,
+        "medical_condition_details": payload.medical_condition_details,
+        "consent_physically_fit": payload.consent_physically_fit,
+        "consent_own_risk": payload.consent_own_risk,
+        "consent_event_rules": payload.consent_event_rules,
+        "consent_photography": payload.consent_photography,
+        "consent_results_published": payload.consent_results_published,
+        "bib_number": "",
+        "qr_code": None,
+        "bib_card": None,
+        "blood_group": "A+",
+        "status": "pending_payment",
+    }
+    reg_obj = Registration(**reg_data)
+    doc = reg_obj.model_dump()
+    doc['registration_date'] = doc['registration_date'].isoformat()
+    await db.registrations.insert_one(doc)
+
+    sap_url = os.environ.get(
+        "SAP_PAYMENT_URL",
+        "https://wds-prd.rvei.edu.in:4430/sap/bc/ui5_ui5/sap/zeventregister/#/scode/RUN_KUMBHA-2026"
+    )
+    return {
+        "message": "Registration saved. Redirecting to payment portal.",
+        "registration_id": reg_obj.id,
+        "payment_url": sap_url,
+        "event_title": event.get('title', ''),
+        "amount": event.get('registration_fee', 0),
+    }
 
 # Payment Routes
 @api_router.post("/payments/checkout/session")
@@ -911,15 +974,59 @@ async def delete_transaction(transaction_id: str):
 
 @api_router.put("/admin/registrations/{registration_id}")
 async def update_registration(registration_id: str, update_data: dict):
+    current = await db.registrations.find_one({"id": registration_id}, {"_id": 0})
+    if not current:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    # If admin is flipping to 'confirmed' and BIB isn't generated yet, do the full flow now
+    transition_to_confirmed = (
+        update_data.get("status") == "confirmed"
+        and current.get("status") != "confirmed"
+        and not current.get("bib_number")
+    )
+
+    if transition_to_confirmed:
+        event = await db.events.find_one({"id": current['event_id']}, {"_id": 0})
+        event_category = event.get('category', 'Event') if event else 'Event'
+        event_title = event.get('title', 'Monsoon Run 2.0') if event else 'Monsoon Run 2.0'
+        event_date = event.get('date', '30th May 2026') if event else '30th May 2026'
+
+        bib_number = await generate_bib_number(current['event_id'], current.get('gender', 'male'))
+        qr_code = generate_qr_code(bib_number)
+        bib_card = generate_bib_card(bib_number, event_category, current.get('blood_group', 'A+'))
+
+        update_data = {
+            **update_data,
+            "bib_number": bib_number,
+            "qr_code": qr_code,
+            "bib_card": bib_card,
+        }
+
+        # Fire-and-forget email
+        try:
+            send_bib_email(
+                to_email=current['user_email'],
+                user_name=current['user_name'],
+                bib_number=bib_number,
+                bib_card_data_url=bib_card,
+                event_title=event_title,
+                event_date=event_date,
+            )
+        except Exception as e:
+            logger.error(f"BIB email dispatch on confirm failed: {e}")
+
     result = await db.registrations.update_one(
         {"id": registration_id},
         {"$set": update_data}
     )
-    
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Registration not found")
-    
-    return {"message": "Registration updated successfully"}
+
+    return {
+        "message": "Registration updated successfully",
+        "bib_generated": transition_to_confirmed,
+        "bib_number": update_data.get("bib_number", current.get("bib_number", "")),
+    }
 
 @api_router.put("/admin/events/{event_id}")
 async def update_event(event_id: str, event_data: dict):

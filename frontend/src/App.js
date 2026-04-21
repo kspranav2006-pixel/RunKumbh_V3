@@ -22,43 +22,7 @@ function App() {
 
   useEffect(() => {
     fetchEvents();
-    checkPaymentStatus();
   }, []);
-
-  const checkPaymentStatus = async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-    
-    if (sessionId) {
-      let attempts = 0;
-      const maxAttempts = 5;
-      
-      const pollStatus = async () => {
-        try {
-          const response = await axios.get(`${API}/payments/checkout/status/${sessionId}`);
-          
-          if (response.data.payment_status === 'paid') {
-            toast({
-              title: 'Payment Successful! 🎉',
-              description: `Registration confirmed! Your BIB number is: ${response.data.bib_number}`,
-              duration: 10000,
-            });
-            window.history.replaceState({}, document.title, window.location.pathname);
-            return;
-          }
-          
-          attempts++;
-          if (attempts < maxAttempts) {
-            setTimeout(pollStatus, 2000);
-          }
-        } catch (error) {
-          console.error('Error checking payment status:', error);
-        }
-      };
-      
-      pollStatus();
-    }
-  };
 
   const fetchEvents = async () => {
     try {
@@ -379,16 +343,27 @@ function EventsSection({ events, toast }) {
     setIsRegistering(true);
 
     try {
-      const originUrl = window.location.origin;
-      
-      const response = await axios.post(`${API}/payments/checkout/session`, {
+      const response = await axios.post(`${API}/register/pending`, {
         event_id: selectedEvent.id,
-        origin_url: originUrl,
+        origin_url: window.location.origin,
         ...registrationData
       });
 
-      if (response.data.url) {
-        window.location.href = response.data.url;
+      if (response.data?.payment_url) {
+        // Open the SAP payment portal in a new tab
+        window.open(response.data.payment_url, '_blank', 'noopener,noreferrer');
+
+        toast({
+          title: 'Almost done! 🏃',
+          description: `Registration saved for ${response.data.event_title}. Complete payment on the RVEI portal — we'll email your BIB card once the Admin confirms.`,
+          duration: 12000,
+        });
+
+        // Close the registration modal
+        setSelectedEvent(null);
+        setIsRegistering(false);
+      } else {
+        throw new Error('No payment URL returned');
       }
     } catch (error) {
       toast({
@@ -729,10 +704,10 @@ function EventsSection({ events, toast }) {
                         className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6"
                         disabled={isRegistering}
                       >
-                        {isRegistering ? 'Processing...' : `Pay ₹${event.registration_fee} & Register`}
+                        {isRegistering ? 'Saving...' : `Continue to Payment (₹${event.registration_fee})`}
                       </Button>
                       <p className="text-xs text-center text-gray-500">
-                        ✅ Secure payment powered by Stripe
+                        ✅ Secure payments via RVEI official payment portal
                       </p>
                     </form>
                   </DialogContent>
