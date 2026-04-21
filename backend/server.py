@@ -290,14 +290,16 @@ def generate_qr_code(bib_number: str) -> str:
 
 BIB_TEMPLATE_PATH = ROOT_DIR / "assets" / "bib_template.png"
 
-# Pill geometry sampled from the template (992x699) — cream pill (BIB) and red pill (BLOOD)
-_BIB_PILL = {"bounds": (220, 257, 770, 441), "fill": (217, 234, 211)}
-_BLOOD_PILL = {"bounds": (304, 612, 496, 677), "fill": (136, 8, 8)}
+# Pill geometry sampled from the template (992x699)
+_BIB_PILL = {"bounds": (220, 270, 770, 441), "fill": (217, 234, 211)}
+_BLOOD_PILL = {"bounds": (304, 613, 496, 677), "fill": (136, 8, 8)}
+_BARCODE_PILL = {"bounds": (655, 607, 979, 682), "fill": (217, 234, 211)}
 
 
 def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A+") -> str:
-    """Render BIB card by overlaying BIB number and blood group on the provided template image.
-    Layout, dimensions and all other design elements come from the template untouched."""
+    """Render BIB card by overlaying BIB number, blood group and barcode onto the branded
+    template image. Everything else in the template (logos, banners, flag, background)
+    is preserved pixel-for-pixel."""
     img = Image.open(BIB_TEMPLATE_PATH).convert("RGB")
     draw = ImageDraw.Draw(img)
 
@@ -311,40 +313,46 @@ def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A
     def _font(size):
         return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
 
-    # Cover existing placeholder text inside each pill with the pill's fill color
+    # BIB number — large, centered inside the big cream pill
     bx1, by1, bx2, by2 = _BIB_PILL["bounds"]
-    draw.rounded_rectangle(
-        [(bx1 + 6, by1 + 6), (bx2 - 6, by2 - 6)],
-        radius=40, fill=_BIB_PILL["fill"]
-    )
-    rx1, ry1, rx2, ry2 = _BLOOD_PILL["bounds"]
-    draw.rounded_rectangle(
-        [(rx1 + 4, ry1 + 4), (rx2 - 4, ry2 - 4)],
-        radius=25, fill=_BLOOD_PILL["fill"]
-    )
-
     bib_center = ((bx1 + bx2) // 2, (by1 + by2) // 2)
-    blood_center = ((rx1 + rx2) // 2, (ry1 + ry2) // 2)
-
-    # Auto-fit BIB font — usable pill area is ~530x165 inside margins
-    max_bib_w, max_bib_h = 480, 140
-    bib_size = 160
+    max_bib_w, max_bib_h = (bx2 - bx1) - 60, (by2 - by1) - 40
+    bib_size = 180
     while bib_size > 40:
-        bbox = draw.textbbox((0, 0), bib_number, font=_font(bib_size), anchor="mm")
-        if (bbox[2] - bbox[0]) <= max_bib_w and (bbox[3] - bbox[1]) <= max_bib_h:
+        bb = draw.textbbox((0, 0), bib_number, font=_font(bib_size), anchor="mm")
+        if (bb[2] - bb[0]) <= max_bib_w and (bb[3] - bb[1]) <= max_bib_h:
             break
         bib_size -= 6
     draw.text(bib_center, bib_number, fill="#000000", font=_font(bib_size), anchor="mm")
 
-    # Auto-fit blood group font — usable area ~170x50
-    max_blood_w, max_blood_h = 160, 50
-    blood_size = 54
+    # Blood group — centered inside the red pill
+    rx1, ry1, rx2, ry2 = _BLOOD_PILL["bounds"]
+    blood_center = ((rx1 + rx2) // 2, (ry1 + ry2) // 2)
+    max_blood_w, max_blood_h = (rx2 - rx1) - 30, (ry2 - ry1) - 20
+    blood_size = 64
     while blood_size > 18:
-        bbox = draw.textbbox((0, 0), blood_group, font=_font(blood_size), anchor="mm")
-        if (bbox[2] - bbox[0]) <= max_blood_w and (bbox[3] - bbox[1]) <= max_blood_h:
+        bb = draw.textbbox((0, 0), blood_group, font=_font(blood_size), anchor="mm")
+        if (bb[2] - bb[0]) <= max_blood_w and (bb[3] - bb[1]) <= max_blood_h:
             break
         blood_size -= 3
     draw.text(blood_center, blood_group, fill="#FFFFFF", font=_font(blood_size), anchor="mm")
+
+    # Barcode — generated for the BIB number, fitted into the bottom-right cream pill
+    try:
+        cx1, cy1, cx2, cy2 = _BARCODE_PILL["bounds"]
+        pad = 12
+        target_w = (cx2 - cx1) - pad * 2
+        target_h = (cy2 - cy1) - pad * 2
+
+        EAN = barcode.get_barcode_class('code128')
+        ean = EAN(bib_number, writer=ImageWriter())
+        bc_buf = io.BytesIO()
+        ean.write(bc_buf, options={'write_text': False, 'module_height': 10, 'module_width': 0.4, 'quiet_zone': 1})
+        bc_buf.seek(0)
+        bc_img = Image.open(bc_buf).convert("RGB").resize((target_w, target_h))
+        img.paste(bc_img, (cx1 + pad, cy1 + pad))
+    except Exception as e:
+        logger.warning(f"Barcode render failed for {bib_number}: {e}")
 
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
