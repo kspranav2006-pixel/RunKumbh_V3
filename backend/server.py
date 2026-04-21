@@ -301,17 +301,25 @@ def generate_bib_card(bib_number: str, category: str, blood_group: str = "A+") -
         b = int(119 + (242 - 119) * (y / height))
         draw.rectangle([(0, y), (width, y + 1)], fill=(r, g, b))
     
-    try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
-        category_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 70)
-        bib_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 200)
-        blood_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
-    except:
-        title_font = ImageFont.load_default()
-        category_font = ImageFont.load_default()
-        bib_font = ImageFont.load_default()
-        blood_font = ImageFont.load_default()
-    
+    # Locate an available bold font (DejaVu isn't installed on this image)
+    font_candidates = [
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    ]
+    font_path = next((p for p in font_candidates if os.path.exists(p)), None)
+
+    def _font(size):
+        if font_path:
+            return ImageFont.truetype(font_path, size)
+        return ImageFont.load_default()
+
+    title_font = _font(120)
+    category_font = _font(70)
+    bib_font = _font(260)          # fits 6-char BIB (e.g. OSM001) nicely within 1000px box
+    blood_label_font = _font(42)
+    blood_font = _font(140)        # much larger
+
     # Top banner
     points = [(0, 0), (width, 0), (width, 200), (width - 150, 200)]
     draw.polygon(points, fill='#FFFFFF')
@@ -322,23 +330,46 @@ def generate_bib_card(bib_number: str, category: str, blood_group: str = "A+") -
     draw.polygon(cat_bg_points, fill='#FF6B35')
     draw.text((width - 480, 80), category, fill='#FFFFFF', font=category_font, anchor='lm')
     
-    # BIB number
-    bib_box_width, bib_box_height = 800, 350
-    bib_box_x, bib_box_y = (width - bib_box_width) // 2, (height - bib_box_height) // 2
-    draw.rounded_rectangle([(bib_box_x, bib_box_y), (bib_box_x + bib_box_width, bib_box_y + bib_box_height)], radius=50, fill='#F5F5DC')
-    
+    # BIB number (large, centered, upper half of card)
+    bib_box_width, bib_box_height = 1000, 500
+    bib_box_x = (width - bib_box_width) // 2
+    bib_box_y = 260
+    draw.rounded_rectangle(
+        [(bib_box_x, bib_box_y), (bib_box_x + bib_box_width, bib_box_y + bib_box_height)],
+        radius=50, fill='#F5F5DC'
+    )
     bbox = draw.textbbox((0, 0), bib_number, font=bib_font)
-    text_x = bib_box_x + (bib_box_width - (bbox[2] - bbox[0])) // 2
-    text_y = bib_box_y + (bib_box_height - (bbox[3] - bbox[1])) // 2
-    draw.text((text_x, text_y), bib_number, fill='#000000', font=bib_font)
+    bib_w = bbox[2] - bbox[0]
+    bib_h = bbox[3] - bbox[1]
+    text_x = bib_box_x + (bib_box_width - bib_w) // 2 - bbox[0]
+    text_y = bib_box_y + (bib_box_height - bib_h) // 2 - bbox[1]
+    draw.text((text_x, text_y), bib_number, fill='#0D7377', font=bib_font)
     
-    # Blood group
-    blood_box_width, blood_box_height = 200, 100
-    blood_box_x, blood_box_y = (width - blood_box_width) // 2, height - 250
-    draw.rounded_rectangle([(blood_box_x, blood_box_y), (blood_box_x + blood_box_width, blood_box_y + blood_box_height)], radius=20, fill='#C41E3A')
+    # Blood group — placed RIGHT BELOW the BIB number box
+    blood_box_width, blood_box_height = 420, 220
+    blood_box_x = (width - blood_box_width) // 2
+    blood_box_y = bib_box_y + bib_box_height + 40
+    draw.rounded_rectangle(
+        [(blood_box_x, blood_box_y), (blood_box_x + blood_box_width, blood_box_y + blood_box_height)],
+        radius=30, fill='#C41E3A'
+    )
+    # Small label "BLOOD GROUP"
+    label_text = "BLOOD GROUP"
+    lbbox = draw.textbbox((0, 0), label_text, font=blood_label_font)
+    lw = lbbox[2] - lbbox[0]
+    draw.text(
+        (blood_box_x + (blood_box_width - lw) // 2 - lbbox[0], blood_box_y + 20 - lbbox[1]),
+        label_text, fill='#FFFFFF', font=blood_label_font
+    )
+    # Actual blood group value
     bbox = draw.textbbox((0, 0), blood_group, font=blood_font)
-    text_x = blood_box_x + (blood_box_width - (bbox[2] - bbox[0])) // 2
-    draw.text((text_x, blood_box_y + 20), blood_group, fill='#FFFFFF', font=blood_font)
+    bw = bbox[2] - bbox[0]
+    bh = bbox[3] - bbox[1]
+    draw.text(
+        (blood_box_x + (blood_box_width - bw) // 2 - bbox[0],
+         blood_box_y + 75 + (blood_box_height - 75 - bh) // 2 - bbox[1]),
+        blood_group, fill='#FFFFFF', font=blood_font
+    )
     
     # Barcode
     try:
@@ -348,9 +379,9 @@ def generate_bib_card(bib_number: str, category: str, blood_group: str = "A+") -
         ean.write(barcode_buffer, options={'write_text': False, 'module_height': 8, 'module_width': 0.3})
         barcode_buffer.seek(0)
         barcode_img = Image.open(barcode_buffer)
-        barcode_img = barcode_img.resize((500, 120))
-        img.paste(barcode_img, (width - 550, height - 150))
-    except:
+        barcode_img = barcode_img.resize((500, 100))
+        img.paste(barcode_img, ((width - 500) // 2, height - 130))
+    except Exception:
         pass
     
     buffer = io.BytesIO()
