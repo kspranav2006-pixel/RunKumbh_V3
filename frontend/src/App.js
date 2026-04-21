@@ -482,7 +482,7 @@ function EventsSection({ events, toast }) {
                       className="w-full bg-gradient-primary hover:opacity-90 text-white font-bold text-lg py-6"
                       onClick={() => setSelectedEvent(event)}
                     >
-                      Register & Pay Now
+                      Register Now
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
