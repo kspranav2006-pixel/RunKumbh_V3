@@ -1066,6 +1066,14 @@ function AdminPage({ toast }) {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterGender, setFilterGender] = useState('');
   const [filterCheckedIn, setFilterCheckedIn] = useState('');
+  
+  // Check-in states
+  const [activeTab, setActiveTab] = useState('registrations'); // registrations, checkin
+  const [scannedParticipant, setScannedParticipant] = useState(null);
+  const [manualBibInput, setManualBibInput] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [selectedRegistration, setSelectedRegistration] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     if (authenticated) {
@@ -1114,6 +1122,33 @@ function AdminPage({ toast }) {
     
     window.open(url, '_blank');
     toast({ title: 'Export Started', description: 'Your CSV file is downloading...' });
+  };
+
+  const handleManualBibLookup = async () => {
+    if (!manualBibInput.trim()) {
+      toast({ title: 'Error', description: 'Please enter a BIB number', variant: 'destructive' });
+      return;
+    }
+    
+    try {
+      const res = await axios.get(`${API}/admin/registrations/bib/${manualBibInput}`);
+      setScannedParticipant(res.data);
+    } catch (error) {
+      toast({ title: 'Not Found', description: 'No registration found with this BIB number', variant: 'destructive' });
+      setScannedParticipant(null);
+    }
+  };
+
+  const handleCheckIn = async (registrationId) => {
+    try {
+      await axios.post(`${API}/admin/registrations/${registrationId}/checkin`);
+      toast({ title: 'Success', description: 'Participant checked in successfully!' });
+      fetchData();
+      setScannedParticipant(null);
+      setManualBibInput('');
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to check in participant', variant: 'destructive' });
+    }
   };
 
   const handleLogin = async (e) => {
@@ -1294,7 +1329,7 @@ function AdminPage({ toast }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-sm font-medium text-gray-600 mb-2">Total Registrations</h3>
             <p className="text-4xl font-bold text-gradient">{totalRegistrations}</p>
@@ -1304,12 +1339,45 @@ function AdminPage({ toast }) {
             <p className="text-4xl font-bold text-gradient">₹{totalRevenue}</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">Checked In</h3>
+            <p className="text-4xl font-bold text-green-600">{registrations.filter(r => r.checked_in).length}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-sm font-medium text-gray-600 mb-2">Total Events</h3>
             <p className="text-4xl font-bold text-gradient">{events.length}</p>
           </div>
         </div>
 
-        {/* Manage Events */}
+        {/* Navigation Tabs */}
+        <div className="mb-6">
+          <div className="flex gap-2 border-b border-gray-200 bg-white rounded-t-lg px-4">
+            <button
+              onClick={() => setActiveTab('registrations')}
+              className={`px-6 py-3 font-medium transition-colors ${
+                activeTab === 'registrations'
+                  ? 'text-teal-600 border-b-2 border-teal-600'
+                  : 'text-gray-600 hover:text-teal-600'
+              }`}
+            >
+              📋 Registrations & Events
+            </button>
+            <button
+              onClick={() => setActiveTab('checkin')}
+              className={`px-6 py-3 font-medium transition-colors ${
+                activeTab === 'checkin'
+                  ? 'text-teal-600 border-b-2 border-teal-600'
+                  : 'text-gray-600 hover:text-teal-600'
+              }`}
+            >
+              ✅ Check-In System
+            </button>
+          </div>
+        </div>
+
+        {/* Registrations Tab Content */}
+        {activeTab === 'registrations' && (
+          <>
+            {/* Manage Events */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Manage Events</h2>
@@ -1992,6 +2060,51 @@ function AdminPage({ toast }) {
                 {loading ? 'Adding...' : 'Add Registration'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Check-In System Tab */}
+      {activeTab === 'checkin' && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">🎯 Event Check-In System</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <div className="bg-gradient-to-r from-teal-50 to-blue-50 p-6 rounded-lg">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">🔍 Manual BIB Lookup</h3>
+                <div className="flex gap-3 mb-4">
+                  <input
+                    type="text"
+                    placeholder="Enter BIB (e.g., OA001)"
+                    value={manualBibInput}
+                    onChange={(e) => setManualBibInput(e.target.value.toUpperCase())}
+                    onKeyPress={(e) => e.key === 'Enter' && handleManualBibLookup()}
+                    className="flex-1 px-4 py-3 border-2 border-teal-300 rounded-lg text-lg font-mono"
+                  />
+                  <button onClick={handleManualBibLookup} className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold">Search</button>
+                </div>
+                <p className="text-sm text-gray-600">💡 <strong>Formats:</strong> OA001, SM001/SW001, FR001, CR001, STAFF001</p>
+              </div>
+            </div>
+            <div>
+              {scannedParticipant ? (
+                <div className="bg-green-50 p-6 rounded-lg border-2 border-green-300">
+                  <h3 className="text-xl font-bold mb-4">✅ Participant Found!</h3>
+                  <div className="bg-white p-4 rounded-lg mb-4">
+                    <p className="text-2xl font-bold text-teal-600 mb-2">{scannedParticipant.registration.bib_number}</p>
+                    <p className="text-lg font-semibold">{scannedParticipant.registration.user_name}</p>
+                    <p className="text-sm text-gray-600">{scannedParticipant.event?.title}</p>
+                  </div>
+                  {!scannedParticipant.registration.checked_in ? (
+                    <button onClick={() => handleCheckIn(scannedParticipant.registration.id)} className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-lg">Check In</button>
+                  ) : (
+                    <div className="text-center py-4 bg-gray-100 rounded-lg"><p>✅ Already Checked In</p></div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-8 rounded-lg text-center"><p className="text-xl text-gray-600">Enter BIB to start</p></div>
+              )}
+            </div>
           </div>
         </div>
       )}
