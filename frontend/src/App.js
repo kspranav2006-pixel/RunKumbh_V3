@@ -2084,7 +2084,7 @@ function AdminPage({ toast }) {
                   />
                   <button onClick={handleManualBibLookup} className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold">Search</button>
                 </div>
-                <p className="text-sm text-gray-600">💡 <strong>Formats:</strong> OSM001/OSW001 (Open 5K M/F), SM001/SW001 (Students 3K M/F), FR001 (Family), CR001 (Couple), STAFF001 (Staff)</p>
+                <p className="text-sm text-gray-600">💡 <strong>Formats:</strong> OSM/OSW (Open/Students 5K), SM/SW (Students 3K), FR (Family), CR (Couple), STAFF</p>
               </div>
             </div>
             <div>

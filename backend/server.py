@@ -220,8 +220,8 @@ async def generate_bib_number(event_id: str, gender: str):
     category = event.get('category', '')
     
     # Define prefix based on category and gender
-    if category == 'Open 5K':
-        # Open 5K has gender-specific BIB numbers
+    if category == 'Open 5K' or category == 'Students 5K':
+        # Both Open 5K and Students 5K share the same BIB sequence
         prefix = 'OSM' if gender.lower() == 'male' else 'OSW'
     elif category == 'Students 3K':
         prefix = 'SM' if gender.lower() == 'male' else 'SW'
@@ -231,8 +231,6 @@ async def generate_bib_number(event_id: str, gender: str):
         prefix = 'CR'
     elif category == 'Staff 3K':
         prefix = 'STAFF'
-    elif category == 'Students 5K':
-        prefix = 'S5'
     else:
         prefix = 'BIB'
     
