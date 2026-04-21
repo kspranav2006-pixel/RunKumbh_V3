@@ -1651,7 +1651,6 @@ function AdminPage({ toast }) {
             )}
           </div>
         </div>
-      </div>
 
       {/* Add Event Modal */}
       {showAddEventDialog && (
@@ -2063,6 +2062,8 @@ function AdminPage({ toast }) {
           </div>
         </div>
       )}
+      </>
+      )}
 
       {/* Check-In System Tab */}
       {activeTab === 'checkin' && (
@@ -2108,6 +2109,7 @@ function AdminPage({ toast }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
