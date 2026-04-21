@@ -1363,10 +1363,16 @@ function AdminPage({ toast }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-sm font-medium text-gray-600 mb-2">Total Registrations</h3>
             <p className="text-4xl font-bold text-gradient">{totalRegistrations}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-400">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">⏳ Pending Payment</h3>
+            <p className="text-4xl font-bold text-orange-600" data-testid="pending-payment-count">
+              {registrations.filter(r => r.status === 'pending_payment').length}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
@@ -1483,7 +1489,7 @@ function AdminPage({ toast }) {
         {/* Manage Registrations */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Confirmed Registrations</h2>
+            <h2 className="text-2xl font-bold text-gray-800">All Registrations</h2>
             <div className="flex gap-3">
               <button
                 onClick={handleExportCSV}
@@ -1582,8 +1588,17 @@ function AdminPage({ toast }) {
               </thead>
               <tbody>
                 {registrations.map((reg) => (
-                  <tr key={reg.id} className="border-b border-gray-200 hover:bg-teal-50 transition-colors">
-                    <td className="p-4 font-bold text-teal-600">{reg.bib_number}</td>
+                  <tr
+                    key={reg.id}
+                    className={`border-b border-gray-200 transition-colors ${
+                      reg.status === 'pending_payment'
+                        ? 'bg-orange-50 hover:bg-orange-100'
+                        : 'hover:bg-teal-50'
+                    }`}
+                  >
+                    <td className="p-4 font-bold text-teal-600">
+                      {reg.bib_number || <span className="text-orange-500 font-normal italic text-xs">— awaiting payment —</span>}
+                    </td>
                     <td className="p-4 text-gray-800">{reg.user_name}</td>
                     <td className="p-4 text-gray-600">{reg.user_email}</td>
                     <td className="p-4 text-gray-600">{reg.user_phone}</td>
@@ -1608,11 +1623,18 @@ function AdminPage({ toast }) {
                       <select
                         value={reg.status}
                         onChange={(e) => handleUpdateStatus(reg.id, e.target.value)}
-                        className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-400"
+                        data-testid={`status-select-${reg.user_email}`}
+                        className={`px-3 py-1 rounded-full text-sm border focus:outline-none focus:ring-2 ${
+                          reg.status === 'confirmed' ? 'bg-green-100 text-green-800 border-green-200 focus:ring-green-400' :
+                          reg.status === 'pending_payment' ? 'bg-orange-100 text-orange-800 border-orange-300 focus:ring-orange-400 font-semibold' :
+                          reg.status === 'cancelled' ? 'bg-red-100 text-red-800 border-red-200 focus:ring-red-400' :
+                          'bg-yellow-100 text-yellow-800 border-yellow-200 focus:ring-yellow-400'
+                        }`}
                       >
-                        <option value="confirmed">confirmed</option>
-                        <option value="pending">pending</option>
-                        <option value="cancelled">cancelled</option>
+                        <option value="pending_payment">⏳ Pending Payment</option>
+                        <option value="confirmed">✓ Confirmed</option>
+                        <option value="pending">Pending</option>
+                        <option value="cancelled">Cancelled</option>
                       </select>
                     </td>
                     <td className="p-4">
@@ -2290,6 +2312,7 @@ function AdminPage({ toast }) {
                     <span className="col-span-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         selectedRegistration.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        selectedRegistration.status === 'pending_payment' ? 'bg-orange-100 text-orange-800' :
                         selectedRegistration.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>{selectedRegistration.status}</span>
