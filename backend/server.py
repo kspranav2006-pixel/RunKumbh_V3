@@ -12,6 +12,9 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
+import qrcode
+import io
+import base64
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 
 ROOT_DIR = Path(__file__).parent
@@ -134,6 +137,7 @@ class Registration(BaseModel):
     registration_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "confirmed"
     bib_number: str
+    qr_code: Optional[str] = None
     checked_in: bool = False
     checked_in_at: Optional[datetime] = None
 
@@ -187,7 +191,7 @@ class PaymentTransaction(BaseModel):
     currency: str
     payment_status: str = "pending"
     status: str = "initiated"
-    bib_number: str = ""
+    bib_number: str = ""  # Will be generated after payment confirmation
     metadata: Dict = {}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -205,6 +209,79 @@ def create_access_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def generate_bib_number(event_id: str, gender: str):
+    """Generate category-specific BIB numbers with proper prefixes and incremental numbering"""
+    # Get event to determine category
+    event = await db.events.find_one({"id": event_id}, {"_id": 0})
+    if not event:
+        return f"BIB{str(uuid.uuid4())[:8].upper()}"
+    
+    category = event.get('category', '')
+    
+    # Define prefix based on category and gender
+    if category == 'Open 5K':
+        prefix = 'OA'
+    elif category == 'Students 3K':
+        prefix = 'SM' if gender.lower() == 'male' else 'SW'
+    elif category == 'Family 3K':
+        prefix = 'FR'
+    elif category == 'Couple 3K':
+        prefix = 'CR'
+    elif category == 'Staff 3K':
+        prefix = 'STAFF'
+    elif category == 'Students 5K':
+        prefix = 'S5'
+    else:
+        prefix = 'BIB'
+    
+    # Find the last BIB number with this prefix
+    regex_pattern = f"^{prefix}"
+    existing_bibs = await db.registrations.find(
+        {"bib_number": {"$regex": regex_pattern}},
+        {"bib_number": 1, "_id": 0}
+    ).to_list(10000)
+    
+    # Extract numbers and find max
+    max_num = 0
+    for bib in existing_bibs:
+        bib_str = bib.get('bib_number', '')
+        try:
+            # Extract numeric part after prefix
+            num_str = bib_str.replace(prefix, '')
+            num = int(num_str)
+            if num > max_num:
+                max_num = num
+        except:
+            continue
+    
+    # Increment and format
+    next_num = max_num + 1
+    if prefix == 'STAFF':
+        return f"{prefix}{next_num:03d}"  # STAFF001, STAFF002...
+    else:
+        return f"{prefix}{next_num:03d}"  # OA001, SM001, etc.
+
+def generate_qr_code(bib_number: str) -> str:
+    """Generate QR code for BIB number and return as base64 string"""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(bib_number)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    img_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return f"data:image/png;base64,{img_base64}"
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     try:
@@ -340,8 +417,8 @@ async def create_payment_checkout(request: Request, payment_request: PaymentChec
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
     
-    # Generate BIB number
-    bib_number = f"BIB{str(uuid.uuid4())[:8].upper()}"
+    # NOTE: BIB number will be generated AFTER payment is confirmed
+    # Store participant data in metadata without BIB number yet
     
     # Create checkout session
     # Convert boolean values to strings for Stripe metadata (Stripe only accepts strings in metadata)
@@ -363,8 +440,7 @@ async def create_payment_checkout(request: Request, payment_request: PaymentChec
         "consent_own_risk": str(payment_request.consent_own_risk),
         "consent_event_rules": str(payment_request.consent_event_rules),
         "consent_photography": str(payment_request.consent_photography),
-        "consent_results_published": str(payment_request.consent_results_published),
-        "bib_number": bib_number
+        "consent_results_published": str(payment_request.consent_results_published)
     }
     
     checkout_request = CheckoutSessionRequest(
@@ -447,8 +523,15 @@ async def get_payment_status(request: Request, session_id: str):
         })
         
         if not existing_reg:
-            # Create registration with all participant data from metadata
+            # Generate BIB number based on category and gender
             metadata = transaction.get('metadata', {})
+            gender = metadata.get('gender', 'male')
+            bib_number = await generate_bib_number(transaction['event_id'], gender)
+            
+            # Generate QR code for the BIB number
+            qr_code = generate_qr_code(bib_number)
+            
+            # Create registration with all participant data from metadata
             # Convert string boolean values back to actual booleans
             def str_to_bool(val):
                 if isinstance(val, bool):
@@ -474,7 +557,8 @@ async def get_payment_status(request: Request, session_id: str):
                 "consent_event_rules": str_to_bool(metadata.get('consent_event_rules', 'False')),
                 "consent_photography": str_to_bool(metadata.get('consent_photography', 'False')),
                 "consent_results_published": str_to_bool(metadata.get('consent_results_published', 'False')),
-                "bib_number": transaction['bib_number'],
+                "bib_number": bib_number,
+                "qr_code": qr_code,
                 "status": "confirmed"
             }
             
@@ -483,6 +567,12 @@ async def get_payment_status(request: Request, session_id: str):
             doc['registration_date'] = doc['registration_date'].isoformat()
             
             await db.registrations.insert_one(doc)
+            
+            # Update transaction with BIB number
+            await db.payment_transactions.update_one(
+                {"session_id": session_id},
+                {"$set": {"bib_number": bib_number}}
+            )
             
             # TODO: Send confirmation email here
             # Email will be sent with BIB number and event details
@@ -616,6 +706,12 @@ async def create_manual_registration(registration: RegistrationCreate):
         raise HTTPException(status_code=400, detail="Already registered for this event")
     
     # Create registration
+    # Generate BIB number based on category and gender
+    bib_number = await generate_bib_number(registration.event_id, registration.gender)
+    
+    # Generate QR code
+    qr_code = generate_qr_code(bib_number)
+    
     reg_data = {
         "user_id": str(uuid.uuid4()),
         "event_id": registration.event_id,
@@ -635,7 +731,8 @@ async def create_manual_registration(registration: RegistrationCreate):
         "consent_event_rules": registration.consent_event_rules,
         "consent_photography": registration.consent_photography,
         "consent_results_published": registration.consent_results_published,
-        "bib_number": f"BIB{str(uuid.uuid4())[:8].upper()}",
+        "bib_number": bib_number,
+        "qr_code": qr_code,
         "status": "confirmed"
     }
     
