@@ -291,9 +291,9 @@ def generate_qr_code(bib_number: str) -> str:
 BIB_TEMPLATE_PATH = ROOT_DIR / "assets" / "bib_template.png"
 
 # Pill geometry sampled from the template (992x699)
-_BIB_PILL = {"bounds": (220, 270, 770, 441), "fill": (217, 234, 211)}
-_BLOOD_PILL = {"bounds": (304, 613, 496, 677), "fill": (136, 8, 8)}
-_BARCODE_PILL = {"bounds": (655, 607, 979, 682), "fill": (217, 234, 211)}
+_BIB_PILL = {"bounds": (220, 257, 770, 441), "fill": (217, 234, 211)}
+_BLOOD_PILL = {"bounds": (191, 613, 386, 687), "fill": (136, 8, 8)}
+_BARCODE_PILL = {"bounds": (546, 613, 871, 687), "fill": (217, 234, 211)}
 
 
 def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A+") -> str:
