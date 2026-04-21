@@ -111,6 +111,7 @@ class RegistrationCreate(BaseModel):
     emergency_contact: str
     has_medical_condition: str
     medical_condition_details: Optional[str] = ""
+    blood_group: Optional[str] = "A+"
     consent_physically_fit: bool
     consent_own_risk: bool
     consent_event_rules: bool
@@ -178,6 +179,7 @@ class PaymentCheckoutRequest(BaseModel):
     emergency_contact: str
     has_medical_condition: str
     medical_condition_details: Optional[str] = ""
+    blood_group: Optional[str] = "A+"
     consent_physically_fit: bool
     consent_own_risk: bool
     consent_event_rules: bool
@@ -500,19 +502,21 @@ async def create_pending_registration(payload: PaymentCheckoutRequest):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    # Block duplicates (any status) for same event + email
+    # Block only if a CONFIRMED registration already exists for this event + email.
+    # pending_payment and cancelled rows are overwritten (useful when admin deletes
+    # a stuck row, or when a user abandons mid-payment and retries).
     existing = await db.registrations.find_one({
         "event_id": payload.event_id,
         "user_email": payload.user_email,
     })
-    if existing:
+    if existing and existing.get("status") == "confirmed":
         raise HTTPException(
             status_code=400,
-            detail=f"This email is already registered for {event.get('title', 'this event')}. If you haven't paid yet, please complete payment on the portal."
+            detail=f"This email is already registered and confirmed for {event.get('title', 'this event')}."
         )
 
     reg_data = {
-        "user_id": str(uuid.uuid4()),
+        "user_id": existing.get("user_id") if existing else str(uuid.uuid4()),
         "event_id": payload.event_id,
         "user_email": payload.user_email,
         "user_name": payload.user_name,
@@ -525,6 +529,7 @@ async def create_pending_registration(payload: PaymentCheckoutRequest):
         "emergency_contact": payload.emergency_contact,
         "has_medical_condition": payload.has_medical_condition,
         "medical_condition_details": payload.medical_condition_details,
+        "blood_group": payload.blood_group or "A+",
         "consent_physically_fit": payload.consent_physically_fit,
         "consent_own_risk": payload.consent_own_risk,
         "consent_event_rules": payload.consent_event_rules,
@@ -533,13 +538,22 @@ async def create_pending_registration(payload: PaymentCheckoutRequest):
         "bib_number": "",
         "qr_code": None,
         "bib_card": None,
-        "blood_group": "A+",
         "status": "pending_payment",
     }
-    reg_obj = Registration(**reg_data)
-    doc = reg_obj.model_dump()
-    doc['registration_date'] = doc['registration_date'].isoformat()
-    await db.registrations.insert_one(doc)
+
+    if existing:
+        # Overwrite the previous pending_payment / cancelled row
+        await db.registrations.update_one(
+            {"id": existing["id"]},
+            {"$set": reg_data}
+        )
+        reg_id = existing["id"]
+    else:
+        reg_obj = Registration(**reg_data)
+        doc = reg_obj.model_dump()
+        doc['registration_date'] = doc['registration_date'].isoformat()
+        await db.registrations.insert_one(doc)
+        reg_id = reg_obj.id
 
     sap_url = os.environ.get(
         "SAP_PAYMENT_URL",
@@ -547,7 +561,7 @@ async def create_pending_registration(payload: PaymentCheckoutRequest):
     )
     return {
         "message": "Registration saved. Redirecting to payment portal.",
-        "registration_id": reg_obj.id,
+        "registration_id": reg_id,
         "payment_url": sap_url,
         "event_title": event.get('title', ''),
         "amount": event.get('registration_fee', 0),
@@ -904,8 +918,9 @@ async def create_manual_registration(registration: RegistrationCreate):
     event = await db.events.find_one({"id": registration.event_id}, {"_id": 0})
     event_category = event.get('category', 'Event') if event else 'Event'
     
-    # Generate BIB card
-    bib_card = generate_bib_card(bib_number, event_category)
+    # Generate BIB card (with supplied blood group)
+    blood_group = (registration.blood_group or "A+").strip()
+    bib_card = generate_bib_card(bib_number, event_category, blood_group)
     
     reg_data = {
         "user_id": str(uuid.uuid4()),
@@ -929,7 +944,7 @@ async def create_manual_registration(registration: RegistrationCreate):
         "bib_number": bib_number,
         "qr_code": qr_code,
         "bib_card": bib_card,
-        "blood_group": "A+",
+        "blood_group": blood_group,
         "status": "confirmed"
     }
     

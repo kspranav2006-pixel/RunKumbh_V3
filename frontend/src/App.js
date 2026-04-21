@@ -325,6 +325,7 @@ function EventsSection({ events, toast }) {
     user_phone: '',
     user_email: '',
     tshirt_size: 'M',
+    blood_group: 'A+',
     marathon_experience: '',
     emergency_contact_name: '',
     emergency_contact: '',
@@ -568,6 +569,28 @@ function EventsSection({ events, toast }) {
                           <option value="XL">XL</option>
                           <option value="XXL">XXL</option>
                         </select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="blood_group">Blood Group *</Label>
+                        <select
+                          id="blood_group"
+                          data-testid="blood-group-select"
+                          value={registrationData.blood_group}
+                          onChange={(e) => setRegistrationData({...registrationData, blood_group: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        >
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Will be printed on your BIB for emergency reference</p>
                       </div>
 
                       <div>
@@ -1024,6 +1047,7 @@ function AdminPage({ toast }) {
     gender: 'male',
     dob: '',
     tshirt_size: 'M',
+    blood_group: 'A+',
     marathon_experience: '',
     emergency_contact_name: '',
     emergency_contact: '',
@@ -2083,6 +2107,27 @@ function AdminPage({ toast }) {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Blood Group *</label>
+                  <select
+                    data-testid="admin-blood-group-select"
+                    value={regForm.blood_group}
+                    onChange={(e) => setRegForm({...regForm, blood_group: e.target.value})}
+                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-teal-500"
+                    required
+                  >
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Emergency Contact Number *</label>
                   <input
