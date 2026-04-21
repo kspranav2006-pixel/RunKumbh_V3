@@ -1232,7 +1232,25 @@ function AdminPage({ toast }) {
       await axios.post(`${API}/admin/registrations`, regForm);
       toast({ title: 'Success', description: 'Registration added successfully' });
       setShowAddRegDialog(false);
-      setRegForm({ event_id: '', user_name: '', user_email: '', user_phone: '', gender: 'male', blood_group: 'A+', emergency_contact: '' });
+      setRegForm({
+        event_id: '',
+        user_name: '',
+        user_email: '',
+        user_phone: '',
+        gender: 'male',
+        dob: '',
+        tshirt_size: 'M',
+        marathon_experience: '',
+        emergency_contact_name: '',
+        emergency_contact: '',
+        has_medical_condition: 'no',
+        medical_condition_details: '',
+        consent_physically_fit: true,
+        consent_own_risk: true,
+        consent_event_rules: true,
+        consent_photography: true,
+        consent_results_published: true
+      });
       fetchData();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to add registration', variant: 'destructive' });
