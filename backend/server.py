@@ -288,21 +288,44 @@ def generate_qr_code(bib_number: str) -> str:
     
     return f"data:image/png;base64,{img_base64}"
 
-BIB_TEMPLATE_PATH = ROOT_DIR / "assets" / "bib_template.png"
+# BIB card templates — one per race distance. 3K = blue banner, 5K = green banner.
+BIB_TEMPLATE_3K = ROOT_DIR / "assets" / "bib_template_3k.png"
+BIB_TEMPLATE_5K = ROOT_DIR / "assets" / "bib_template_5k.png"
 
-# Pill geometry sampled from the template (992x699)
-_BIB_PILL = {"bounds": (220, 257, 770, 441), "fill": (217, 234, 211)}
-_BLOOD_PILL = {"bounds": (191, 613, 386, 687), "fill": (136, 8, 8)}
-_BARCODE_PILL = {"bounds": (546, 613, 871, 687), "fill": (217, 234, 211)}
-# Top-right light-green banner area (for the event title)
-_EVENT_BANNER = {"bounds": (500, 30, 930, 180)}
+# Pill geometry (detected from rendered slides, 1654x1166 px)
+_TEMPLATE_LAYOUTS = {
+    "3k": {
+        "path": BIB_TEMPLATE_3K,
+        "bib_pill":     (367, 428, 1284, 736),
+        "blood_pill":   (283, 1021, 636, 1144),
+        "barcode_pill": (891, 1013, 1432, 1137),
+        "event_banner": (760, 30, 1510, 180),  # usable area inside top-right colored banner
+    },
+    "5k": {
+        "path": BIB_TEMPLATE_5K,
+        "bib_pill":     (367, 428, 1284, 736),
+        "blood_pill":   (318, 1021, 643, 1146),
+        "barcode_pill": (911, 1021, 1452, 1146),
+        "event_banner": (760, 30, 1510, 180),
+    },
+}
+
+
+def _pick_template(category: str) -> dict:
+    """Blue template for 3K events, green template for 5K events.
+    Falls back to 5K if distance can't be inferred."""
+    cat = (category or "").lower()
+    if "3k" in cat:
+        return _TEMPLATE_LAYOUTS["3k"]
+    return _TEMPLATE_LAYOUTS["5k"]
 
 
 def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A+") -> str:
     """Render BIB card by overlaying BIB number, event title, blood group and barcode
-    onto the branded template image. Everything else in the template (logos, banner,
-    background) is preserved pixel-for-pixel."""
-    img = Image.open(BIB_TEMPLATE_PATH).convert("RGB")
+    onto the appropriate branded template (blue for 3K, green for 5K). All other
+    design elements in the template are preserved pixel-for-pixel."""
+    layout = _pick_template(category)
+    img = Image.open(layout["path"]).convert("RGB")
     draw = ImageDraw.Draw(img)
 
     font_candidates = [
@@ -315,50 +338,40 @@ def generate_bib_card(bib_number: str, category: str = "", blood_group: str = "A
     def _font(size):
         return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
 
-    # Event title — centered inside the top-right green banner
+    def _fit_text(text, max_w, max_h, start_size, min_size=20, step=4):
+        size = start_size
+        while size > min_size:
+            bb = draw.textbbox((0, 0), text, font=_font(size), anchor="mm")
+            if (bb[2] - bb[0]) <= max_w and (bb[3] - bb[1]) <= max_h:
+                return _font(size)
+            size -= step
+        return _font(min_size)
+
+    # Event title in the top-right colored banner
     event_label = (category or "").strip() or "Event"
-    ex1, ey1, ex2, ey2 = _EVENT_BANNER["bounds"]
-    event_center = ((ex1 + ex2) // 2, (ey1 + ey2) // 2)
-    max_event_w, max_event_h = (ex2 - ex1) - 30, (ey2 - ey1) - 20
-    event_size = 72
-    while event_size > 22:
-        bb = draw.textbbox((0, 0), event_label, font=_font(event_size), anchor="mm")
-        if (bb[2] - bb[0]) <= max_event_w and (bb[3] - bb[1]) <= max_event_h:
-            break
-        event_size -= 4
-    draw.text(event_center, event_label, fill="#FFFFFF", font=_font(event_size), anchor="mm")
+    ex1, ey1, ex2, ey2 = layout["event_banner"]
+    f = _fit_text(event_label, (ex2 - ex1) - 30, (ey2 - ey1) - 20, start_size=110)
+    draw.text(((ex1 + ex2) // 2, (ey1 + ey2) // 2), event_label,
+              fill="#FFFFFF", font=f, anchor="mm")
 
-    # BIB number — large, centered inside the big cream pill
-    bx1, by1, bx2, by2 = _BIB_PILL["bounds"]
-    bib_center = ((bx1 + bx2) // 2, (by1 + by2) // 2)
-    max_bib_w, max_bib_h = (bx2 - bx1) - 60, (by2 - by1) - 40
-    bib_size = 180
-    while bib_size > 40:
-        bb = draw.textbbox((0, 0), bib_number, font=_font(bib_size), anchor="mm")
-        if (bb[2] - bb[0]) <= max_bib_w and (bb[3] - bb[1]) <= max_bib_h:
-            break
-        bib_size -= 6
-    draw.text(bib_center, bib_number, fill="#000000", font=_font(bib_size), anchor="mm")
+    # BIB number in the big cream pill
+    bx1, by1, bx2, by2 = layout["bib_pill"]
+    f = _fit_text(bib_number, (bx2 - bx1) - 80, (by2 - by1) - 60, start_size=300, step=6)
+    draw.text(((bx1 + bx2) // 2, (by1 + by2) // 2), bib_number,
+              fill="#000000", font=f, anchor="mm")
 
-    # Blood group — centered inside the red pill
-    rx1, ry1, rx2, ry2 = _BLOOD_PILL["bounds"]
-    blood_center = ((rx1 + rx2) // 2, (ry1 + ry2) // 2)
-    max_blood_w, max_blood_h = (rx2 - rx1) - 30, (ry2 - ry1) - 20
-    blood_size = 64
-    while blood_size > 18:
-        bb = draw.textbbox((0, 0), blood_group, font=_font(blood_size), anchor="mm")
-        if (bb[2] - bb[0]) <= max_blood_w and (bb[3] - bb[1]) <= max_blood_h:
-            break
-        blood_size -= 3
-    draw.text(blood_center, blood_group, fill="#FFFFFF", font=_font(blood_size), anchor="mm")
+    # Blood group in the red pill
+    rx1, ry1, rx2, ry2 = layout["blood_pill"]
+    f = _fit_text(blood_group, (rx2 - rx1) - 30, (ry2 - ry1) - 20, start_size=110)
+    draw.text(((rx1 + rx2) // 2, (ry1 + ry2) // 2), blood_group,
+              fill="#FFFFFF", font=f, anchor="mm")
 
-    # Barcode — generated for the BIB number, fitted into the bottom-right cream pill
+    # Barcode fills the bottom-right cream pill
     try:
-        cx1, cy1, cx2, cy2 = _BARCODE_PILL["bounds"]
-        pad = 12
+        cx1, cy1, cx2, cy2 = layout["barcode_pill"]
+        pad = 16
         target_w = (cx2 - cx1) - pad * 2
         target_h = (cy2 - cy1) - pad * 2
-
         EAN = barcode.get_barcode_class('code128')
         ean = EAN(bib_number, writer=ImageWriter())
         bc_buf = io.BytesIO()
