@@ -221,7 +221,8 @@ async def generate_bib_number(event_id: str, gender: str):
     
     # Define prefix based on category and gender
     if category == 'Open 5K':
-        prefix = 'OA'
+        # Open 5K has gender-specific BIB numbers
+        prefix = 'OSM' if gender.lower() == 'male' else 'OSW'
     elif category == 'Students 3K':
         prefix = 'SM' if gender.lower() == 'male' else 'SW'
     elif category == 'Family 3K':
@@ -260,7 +261,7 @@ async def generate_bib_number(event_id: str, gender: str):
     if prefix == 'STAFF':
         return f"{prefix}{next_num:03d}"  # STAFF001, STAFF002...
     else:
-        return f"{prefix}{next_num:03d}"  # OA001, SM001, etc.
+        return f"{prefix}{next_num:03d}"  # OM001, OW001, SM001, etc.
 
 def generate_qr_code(bib_number: str) -> str:
     """Generate QR code for BIB number and return as base64 string"""
