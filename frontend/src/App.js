@@ -1121,6 +1121,29 @@ function AdminPage({ toast }) {
     }
   }, [authenticated]);
 
+  // Auto-refresh admin data every 15s + keep-alive ping every 30s
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  const [isLive, setIsLive] = useState(true);
+
+  useEffect(() => {
+    if (!authenticated) return;
+    const refreshInterval = setInterval(() => {
+      fetchData();
+    }, 15000);
+    const keepAliveInterval = setInterval(() => {
+      axios.get(`${API}/`).then(() => setIsLive(true)).catch(() => setIsLive(false));
+    }, 30000);
+    const tickInterval = setInterval(() => {
+      setSecondsAgo(prev => prev + 1);
+    }, 1000);
+    return () => {
+      clearInterval(refreshInterval);
+      clearInterval(keepAliveInterval);
+      clearInterval(tickInterval);
+    };
+  }, [authenticated]);
+
   const fetchData = async () => {
     try {
       // Build query params for search and filters
@@ -1139,8 +1162,12 @@ function AdminPage({ toast }) {
       setTransactions(res.data.transactions || []);
       setTotalRegistrations(res.data.total_registrations || 0);
       setTotalRevenue(res.data.total_revenue || 0);
+      setLastRefresh(new Date());
+      setSecondsAgo(0);
+      setIsLive(true);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setIsLive(false);
     }
   };
 
@@ -1378,12 +1405,43 @@ function AdminPage({ toast }) {
             <h1 className="text-4xl font-bold text-gradient">Admin Dashboard</h1>
             <p className="text-gray-600 mt-2">RunKumbh Registrations Management</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-6 py-2 bg-white border-2 border-teal-600 text-teal-600 rounded-lg font-medium hover:bg-teal-50 transition-colors"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <div
+              data-testid="live-status-bar"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
+                isLive ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+              }`}
+              title={`Data auto-refreshes every 15s · last update ${secondsAgo}s ago`}
+            >
+              <span className={`relative flex h-2.5 w-2.5`}>
+                {isLive && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isLive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              </span>
+              <div className="text-xs leading-tight">
+                <div className={`font-semibold ${isLive ? 'text-green-700' : 'text-red-700'}`}>
+                  {isLive ? 'Live · Auto-refresh ON' : 'Disconnected'}
+                </div>
+                <div className="text-gray-500">Updated {secondsAgo}s ago</div>
+              </div>
+            </div>
+            <button
+              onClick={fetchData}
+              data-testid="manual-refresh-btn"
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+              title="Refresh now"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-6 py-2 bg-white border-2 border-teal-600 text-teal-600 rounded-lg font-medium hover:bg-teal-50 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -1526,10 +1584,12 @@ function AdminPage({ toast }) {
               </button>
               <button
                 onClick={() => setShowAddRegDialog(true)}
-                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+                data-testid="add-paid-registration-btn"
+                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg flex items-center gap-2 font-semibold shadow-md transition-all"
+                title="For runners who paid directly on SAP without using our form"
               >
                 <Plus className="w-5 h-5" />
-                Add Registration
+                Add Paid Registration
               </button>
             </div>
           </div>
