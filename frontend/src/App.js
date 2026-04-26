@@ -341,6 +341,67 @@ function EventsSection({ events, toast }) {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    // ── Client-side validations ──
+    const phone = (registrationData.user_phone || '').trim();
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      toast({
+        title: 'Invalid Mobile Number',
+        description: 'Enter exactly 10 digits, starting with 6, 7, 8 or 9 (e.g., 9876543210).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const emergencyPhone = (registrationData.emergency_contact || '').trim();
+    if (!/^[6-9]\d{9}$/.test(emergencyPhone)) {
+      toast({
+        title: 'Invalid Emergency Contact Number',
+        description: 'Emergency contact must also be exactly 10 digits, starting with 6, 7, 8 or 9.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const dob = new Date(registrationData.dob);
+    if (!registrationData.dob || isNaN(dob.getTime())) {
+      toast({ title: 'Invalid Date of Birth', description: 'Please pick a valid date.', variant: 'destructive' });
+      return;
+    }
+    const today = new Date();
+    if (dob > today) {
+      toast({ title: 'Invalid Date of Birth', description: 'Date of birth cannot be in the future.', variant: 'destructive' });
+      return;
+    }
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    if (age < 5 || age > 100) {
+      toast({
+        title: 'Invalid Date of Birth',
+        description: `Age computed as ${age} years. Please enter a realistic date of birth.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Emergency contact must NOT be the same person as the registrant
+    const sameName = (registrationData.emergency_contact_name || '').trim().toLowerCase()
+      === (registrationData.user_name || '').trim().toLowerCase();
+    const samePhone = emergencyPhone === phone;
+    if (sameName || samePhone) {
+      toast({
+        title: 'Emergency Contact Should Be Someone Else',
+        description: sameName && samePhone
+          ? 'Emergency contact cannot be the same name AND number as yours. Please add a parent, sibling or friend.'
+          : sameName
+            ? 'Emergency contact name cannot be the same as your name. Please add a parent, sibling or friend.'
+            : 'Emergency contact number cannot be the same as your number. Please add a parent, sibling or friend.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsRegistering(true);
 
     try {
@@ -525,9 +586,12 @@ function EventsSection({ events, toast }) {
                             id="dob"
                             type="date"
                             value={registrationData.dob}
+                            min="1925-01-01"
+                            max={new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                             onChange={(e) => setRegistrationData({...registrationData, dob: e.target.value})}
                             required
                           />
+                          <p className="text-xs text-gray-500 mt-1">You must be at least 5 years old</p>
                         </div>
                       </div>
 
@@ -536,10 +600,18 @@ function EventsSection({ events, toast }) {
                         <Input
                           id="user_phone"
                           type="tel"
+                          inputMode="numeric"
+                          pattern="[6-9][0-9]{9}"
+                          maxLength={10}
+                          placeholder="10-digit Indian mobile"
                           required
                           value={registrationData.user_phone}
-                          onChange={(e) => setRegistrationData({ ...registrationData, user_phone: e.target.value })}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setRegistrationData({ ...registrationData, user_phone: digits });
+                          }}
                         />
+                        <p className="text-xs text-gray-500 mt-1">10 digits, must start with 6, 7, 8 or 9</p>
                       </div>
 
                       <div>
@@ -619,10 +691,18 @@ function EventsSection({ events, toast }) {
                         <Input
                           id="emergency_phone"
                           type="tel"
+                          inputMode="numeric"
+                          pattern="[6-9][0-9]{9}"
+                          maxLength={10}
+                          placeholder="10-digit Indian mobile"
                           value={registrationData.emergency_contact}
-                          onChange={(e) => setRegistrationData({...registrationData, emergency_contact: e.target.value})}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setRegistrationData({ ...registrationData, emergency_contact: digits });
+                          }}
                           required
                         />
+                        <p className="text-xs text-gray-500 mt-1">Must be different from your number</p>
                       </div>
 
                       <div>
@@ -668,58 +748,37 @@ function EventsSection({ events, toast }) {
                         )}
                       </div>
 
-                      <div className="border-t pt-4 space-y-3">
-                        <Label className="text-base font-semibold block">Consent (All required) *</Label>
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={registrationData.consent_physically_fit}
-                            onChange={(e) => setRegistrationData({...registrationData, consent_physically_fit: e.target.checked})}
-                            className="mt-1 w-4 h-4"
-                            required
-                          />
-                          <span className="text-sm">I confirm I am physically fit to participate.</span>
-                        </label>
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={registrationData.consent_own_risk}
-                            onChange={(e) => setRegistrationData({...registrationData, consent_own_risk: e.target.checked})}
-                            className="mt-1 w-4 h-4"
-                            required
-                          />
-                          <span className="text-sm">I understand participation is at my own risk.</span>
-                        </label>
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={registrationData.consent_event_rules}
-                            onChange={(e) => setRegistrationData({...registrationData, consent_event_rules: e.target.checked})}
-                            className="mt-1 w-4 h-4"
-                            required
-                          />
-                          <span className="text-sm">I agree to event rules and instructions.</span>
-                        </label>
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={registrationData.consent_photography}
-                            onChange={(e) => setRegistrationData({...registrationData, consent_photography: e.target.checked})}
-                            className="mt-1 w-4 h-4"
-                            required
-                          />
-                          <span className="text-sm">I consent to photography/video recording during event.</span>
-                        </label>
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={registrationData.consent_results_published}
-                            onChange={(e) => setRegistrationData({...registrationData, consent_results_published: e.target.checked})}
-                            className="mt-1 w-4 h-4"
-                            required
-                          />
-                          <span className="text-sm">I agree my race timings/results may be published.</span>
-                        </label>
+                      <div className="border-t pt-4 space-y-2">
+                        <Label className="text-base font-semibold block mb-2">Consent (All required) *</Label>
+
+                        {[
+                          { key: 'consent_physically_fit',     text: 'I confirm I am physically fit to participate.' },
+                          { key: 'consent_own_risk',           text: 'I understand participation is at my own risk.' },
+                          { key: 'consent_event_rules',        text: 'I agree to event rules and instructions.' },
+                          { key: 'consent_photography',        text: 'I consent to photography/video recording during event.' },
+                          { key: 'consent_results_published',  text: 'I agree my race timings/results may be published.' },
+                        ].map(({ key, text }) => (
+                          <label
+                            key={key}
+                            data-testid={`consent-${key}`}
+                            onClick={() => setRegistrationData({ ...registrationData, [key]: !registrationData[key] })}
+                            className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer select-none transition-colors ${
+                              registrationData[key]
+                                ? 'bg-teal-50 border-teal-400'
+                                : 'bg-white border-gray-200 hover:border-teal-300 hover:bg-teal-50/40'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={registrationData[key]}
+                              onChange={() => {}}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-0.5 w-5 h-5 accent-teal-600 cursor-pointer flex-shrink-0"
+                              required
+                            />
+                            <span className="text-sm leading-relaxed flex-1">{text}</span>
+                          </label>
+                        ))}
                       </div>
 
                       <Button
