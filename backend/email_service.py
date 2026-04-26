@@ -7,6 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.utils import formataddr
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +111,11 @@ def send_bib_email(
     bib_card_data_url: str,
     event_title: str = "Monsoon Run 2.0",
     event_date: str = "30th May 2026",
+    extra_bib_cards: Optional[List[Tuple[str, str]]] = None,
 ) -> bool:
-    """Send the BIB confirmation email with the BIB card image embedded and attached."""
+    """Send the BIB confirmation email with the BIB card image embedded and attached.
+    extra_bib_cards: optional list of (data_url, member_name) — for team events (Couple/Family),
+    these get attached as additional BIB card PNGs (one per partner/family member)."""
     cfg = _get_config()
     gmail_user = cfg["user"]
     gmail_password = cfg["password"]
@@ -130,18 +134,26 @@ def send_bib_email(
         alt = MIMEMultipart("alternative")
         msg.attach(alt)
 
+        team_count = 1 + len(extra_bib_cards or [])
+        team_note = (
+            f"\nThis is a team event — {team_count} BIB cards are attached "
+            f"(one for each participant). All share the same BIB number {bib_number}.\n"
+            if team_count > 1 else ""
+        )
+
         text_body = (
             f"Hi {user_name},\n\n"
             f"Your registration for {event_title} is confirmed.\n"
             f"BIB Number: {bib_number}\n"
-            f"Event Date: {event_date}\n\n"
+            f"Event Date: {event_date}\n"
+            f"{team_note}\n"
             "Your BIB card is attached. Please carry it on race day along with a photo ID.\n\n"
             "— RunKumbh 2026 Team"
         )
         alt.attach(MIMEText(text_body, "plain"))
         alt.attach(MIMEText(_build_html(user_name, bib_number, event_title, event_date), "html"))
 
-        # Embed and attach BIB card image
+        # Lead BIB card — embedded + attached
         img_bytes = _decode_bib_card(bib_card_data_url)
         if img_bytes:
             inline_img = MIMEImage(img_bytes, _subtype="png")
@@ -150,15 +162,31 @@ def send_bib_email(
             msg.attach(inline_img)
 
             attach_img = MIMEImage(img_bytes, _subtype="png")
-            attach_img.add_header("Content-Disposition", "attachment", filename=f"BIB_{bib_number}.png")
+            attach_img.add_header(
+                "Content-Disposition", "attachment",
+                filename=f"BIB_{bib_number}_{user_name.replace(' ', '_')}.png",
+            )
             msg.attach(attach_img)
+
+        # Extra BIB cards for team members
+        for data_url, member_name in (extra_bib_cards or []):
+            extra_bytes = _decode_bib_card(data_url)
+            if not extra_bytes:
+                continue
+            extra_img = MIMEImage(extra_bytes, _subtype="png")
+            safe_name = (member_name or "member").replace(' ', '_')
+            extra_img.add_header(
+                "Content-Disposition", "attachment",
+                filename=f"BIB_{bib_number}_{safe_name}.png",
+            )
+            msg.attach(extra_img)
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
             server.starttls()
             server.login(gmail_user, gmail_password.replace(" ", ""))
             server.sendmail(gmail_user, [to_email], msg.as_string())
 
-        logger.info(f"BIB email sent to {to_email} (BIB {bib_number})")
+        logger.info(f"BIB email sent to {to_email} (BIB {bib_number}, {team_count} card(s))")
         return True
     except Exception as e:
         logger.exception(f"Failed to send BIB email to {to_email}: {e}")

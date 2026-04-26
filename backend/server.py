@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
@@ -94,6 +94,20 @@ class Event(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Registration Models
+class TeamMember(BaseModel):
+    """Additional participant for Couple Run / Family Run team registrations."""
+    user_name: str
+    user_email: str = ""
+    user_phone: str = ""
+    gender: str
+    dob: str
+    tshirt_size: str
+    blood_group: str = "A+"
+    emergency_contact_name: str = ""
+    emergency_contact: str = ""
+    bib_card: Optional[str] = None  # per-member BIB card image (same BIB number, own name+blood)
+
+
 class RegistrationCreate(BaseModel):
     event_id: str
     user_email: str
@@ -108,6 +122,7 @@ class RegistrationCreate(BaseModel):
     has_medical_condition: str
     medical_condition_details: Optional[str] = ""
     blood_group: Optional[str] = "A+"
+    team_members: Optional[List[TeamMember]] = []
     consent_physically_fit: bool
     consent_own_risk: bool
     consent_event_rules: bool
@@ -135,6 +150,7 @@ class Registration(BaseModel):
     consent_event_rules: bool
     consent_photography: bool
     consent_results_published: bool
+    team_members: List[TeamMember] = []
     registration_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str = "confirmed"
     bib_number: str = ""
@@ -176,6 +192,7 @@ class PaymentCheckoutRequest(BaseModel):
     has_medical_condition: str
     medical_condition_details: Optional[str] = ""
     blood_group: Optional[str] = "A+"
+    team_members: Optional[List[TeamMember]] = []
     consent_physically_fit: bool
     consent_own_risk: bool
     consent_event_rules: bool
@@ -526,6 +543,7 @@ async def create_pending_registration(payload: PaymentCheckoutRequest):
         "has_medical_condition": payload.has_medical_condition,
         "medical_condition_details": payload.medical_condition_details,
         "blood_group": payload.blood_group or "A+",
+        "team_members": [m.model_dump() for m in (payload.team_members or [])],
         "consent_physically_fit": payload.consent_physically_fit,
         "consent_own_risk": payload.consent_own_risk,
         "consent_event_rules": payload.consent_event_rules,
@@ -666,7 +684,17 @@ async def create_manual_registration(registration: RegistrationCreate):
     # Generate BIB card (with supplied blood group)
     blood_group = (registration.blood_group or "A+").strip()
     bib_card = generate_bib_card(bib_number, event_category, blood_group)
-    
+
+    # Per-member BIB cards for team events (Couple/Family)
+    team_members_data = []
+    extra_cards: List[Tuple[str, str]] = []
+    for m in (registration.team_members or []):
+        m_dict = m.model_dump() if hasattr(m, 'model_dump') else dict(m)
+        m_card = generate_bib_card(bib_number, event_category, m_dict.get('blood_group', 'A+'))
+        m_dict['bib_card'] = m_card
+        team_members_data.append(m_dict)
+        extra_cards.append((m_card, m_dict.get('user_name', 'member')))
+
     reg_data = {
         "user_id": str(uuid.uuid4()),
         "event_id": registration.event_id,
@@ -686,6 +714,7 @@ async def create_manual_registration(registration: RegistrationCreate):
         "consent_event_rules": registration.consent_event_rules,
         "consent_photography": registration.consent_photography,
         "consent_results_published": registration.consent_results_published,
+        "team_members": team_members_data,
         "bib_number": bib_number,
         "qr_code": qr_code,
         "bib_card": bib_card,
@@ -710,6 +739,7 @@ async def create_manual_registration(registration: RegistrationCreate):
             bib_card_data_url=bib_card,
             event_title=event_title,
             event_date=event_date,
+            extra_bib_cards=extra_cards,
         )
     except Exception as e:
         logger.error(f"BIB email dispatch (manual) failed: {e}")
@@ -753,7 +783,16 @@ async def update_registration(registration_id: str, update_data: dict):
 
         bib_number = await generate_bib_number(current['event_id'], current.get('gender', 'male'))
         qr_code = generate_qr_code(bib_number)
+
+        # Lead BIB card (with lead's blood group)
         bib_card = generate_bib_card(bib_number, event_category, current.get('blood_group', 'A+'))
+
+        # Generate per-member BIB cards (same BIB number, each member's own blood group)
+        team_members = current.get('team_members') or []
+        updated_team = []
+        for m in team_members:
+            m_card = generate_bib_card(bib_number, event_category, m.get('blood_group', 'A+'))
+            updated_team.append({**m, "bib_card": m_card})
 
         update_data = {
             **update_data,
@@ -761,9 +800,14 @@ async def update_registration(registration_id: str, update_data: dict):
             "qr_code": qr_code,
             "bib_card": bib_card,
         }
+        if updated_team:
+            update_data["team_members"] = updated_team
 
-        # Fire-and-forget email
+        # Fire-and-forget email — only to the lead, with all BIB cards attached
         try:
+            extra_cards = [
+                (m["bib_card"], m["user_name"]) for m in updated_team if m.get("bib_card")
+            ]
             send_bib_email(
                 to_email=current['user_email'],
                 user_name=current['user_name'],
@@ -771,6 +815,7 @@ async def update_registration(registration_id: str, update_data: dict):
                 bib_card_data_url=bib_card,
                 event_title=event_title,
                 event_date=event_date,
+                extra_bib_cards=extra_cards,
             )
         except Exception as e:
             logger.error(f"BIB email dispatch on confirm failed: {e}")
@@ -1045,7 +1090,13 @@ async def resend_bib_email(registration_id: str):
     event = await db.events.find_one({"id": registration['event_id']}, {"_id": 0})
     event_title = event.get('title', 'Monsoon Run 2.0') if event else 'Monsoon Run 2.0'
     event_date = event.get('date', '30th May 2026') if event else '30th May 2026'
-    
+
+    extra_cards = [
+        (m.get('bib_card'), m.get('user_name', 'member'))
+        for m in (registration.get('team_members') or [])
+        if m.get('bib_card')
+    ]
+
     sent = send_bib_email(
         to_email=registration['user_email'],
         user_name=registration['user_name'],
@@ -1053,6 +1104,7 @@ async def resend_bib_email(registration_id: str):
         bib_card_data_url=bib_card,
         event_title=event_title,
         event_date=event_date,
+        extra_bib_cards=extra_cards,
     )
     
     return {

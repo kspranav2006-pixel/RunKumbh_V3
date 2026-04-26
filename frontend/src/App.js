@@ -316,6 +316,25 @@ function AboutSection() {
   );
 }
 
+function emptyTeamMember() {
+  return {
+    user_name: '',
+    user_email: '',
+    user_phone: '',
+    gender: 'male',
+    dob: '',
+    tshirt_size: 'M',
+    blood_group: 'A+',
+  };
+}
+
+function updateTeamMember(setter, idx, patch) {
+  setter(prev => ({
+    ...prev,
+    team_members: (prev.team_members || []).map((m, i) => i === idx ? { ...m, ...patch } : m),
+  }));
+}
+
 function EventsSection({ events, toast }) {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [registrationData, setRegistrationData] = useState({
@@ -331,6 +350,7 @@ function EventsSection({ events, toast }) {
     emergency_contact: '',
     has_medical_condition: 'no',
     medical_condition_details: '',
+    team_members: [],
     consent_physically_fit: false,
     consent_own_risk: false,
     consent_event_rules: false,
@@ -376,10 +396,10 @@ function EventsSection({ events, toast }) {
     let age = today.getFullYear() - dob.getFullYear();
     const m = today.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-    if (age < 5 || age > 100) {
+    if (age < 8 || age > 100) {
       toast({
         title: 'Invalid Date of Birth',
-        description: `Age computed as ${age} years. Please enter a realistic date of birth.`,
+        description: `Age computed as ${age} years. Minimum age is 8 years.`,
         variant: 'destructive',
       });
       return;
@@ -400,6 +420,51 @@ function EventsSection({ events, toast }) {
         variant: 'destructive',
       });
       return;
+    }
+
+    // Team-event validations (Couple Run / Family Run)
+    const isCouple = selectedEvent?.category === 'Couple 3K';
+    const isFamily = selectedEvent?.category === 'Family 3K';
+    const team = registrationData.team_members || [];
+    if (isCouple && team.length !== 1) {
+      toast({ title: 'Partner Required', description: 'Couple Run needs exactly 1 partner.', variant: 'destructive' });
+      return;
+    }
+    if (isFamily && (team.length < 2 || team.length > 3)) {
+      toast({
+        title: 'Family Size Invalid',
+        description: 'Family Run needs 3 to 4 members (you + 2 to 3 family members).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    for (let i = 0; i < team.length; i++) {
+      const m = team[i];
+      const label = isCouple ? 'Partner' : `Family Member ${i + 2}`;
+      if (!m.user_name?.trim() || !m.dob || !m.tshirt_size || !m.blood_group) {
+        toast({ title: `${label}: Missing details`, description: 'Please fill all required fields.', variant: 'destructive' });
+        return;
+      }
+      if (!/^[6-9]\d{9}$/.test((m.user_phone || '').trim())) {
+        toast({ title: `${label}: Invalid phone`, description: '10 digits, must start with 6, 7, 8 or 9.', variant: 'destructive' });
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((m.user_email || '').trim())) {
+        toast({ title: `${label}: Invalid email`, description: 'Please enter a valid email.', variant: 'destructive' });
+        return;
+      }
+      const memberDob = new Date(m.dob);
+      let memberAge = today.getFullYear() - memberDob.getFullYear();
+      const mm = today.getMonth() - memberDob.getMonth();
+      if (mm < 0 || (mm === 0 && today.getDate() < memberDob.getDate())) memberAge--;
+      if (memberAge < 8 || memberAge > 100) {
+        toast({ title: `${label}: Invalid DOB`, description: `Age computed as ${memberAge}. Minimum 8 years.`, variant: 'destructive' });
+        return;
+      }
+      if (m.user_phone === phone) {
+        toast({ title: `${label}: Duplicate phone`, description: 'Each member must have their own phone number.', variant: 'destructive' });
+        return;
+      }
     }
 
     setIsRegistering(true);
@@ -536,13 +601,23 @@ function EventsSection({ events, toast }) {
                 <Dialog open={selectedEvent?.id === event.id} onOpenChange={(open) => {
                   if (!open) {
                     setSelectedEvent(null);
-                    setRegistrationData({ user_name: '', user_email: '', user_phone: '', gender: 'male', blood_group: 'A+', emergency_contact: '' });
+                    setRegistrationData({ user_name: '', user_email: '', user_phone: '', gender: 'male', blood_group: 'A+', emergency_contact: '', team_members: [] });
                   }
                 }}>
                   <DialogTrigger asChild>
                     <Button
                       className="w-full bg-gradient-primary hover:opacity-90 text-white font-bold text-lg py-6"
-                      onClick={() => setSelectedEvent(event)}
+                      onClick={() => {
+                        const isCouple = event.category === 'Couple 3K';
+                        const isFamily = event.category === 'Family 3K';
+                        const initialTeam = isCouple
+                          ? [emptyTeamMember()]                                  // 1 partner
+                          : isFamily
+                            ? [emptyTeamMember(), emptyTeamMember()]             // start with 2 extras (3 total)
+                            : [];
+                        setRegistrationData(prev => ({ ...prev, team_members: initialTeam }));
+                        setSelectedEvent(event);
+                      }}
                     >
                       Register Now
                     </Button>
@@ -587,11 +662,11 @@ function EventsSection({ events, toast }) {
                             type="date"
                             value={registrationData.dob}
                             min="1925-01-01"
-                            max={new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                            max={new Date(Date.now() - 8 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                             onChange={(e) => setRegistrationData({...registrationData, dob: e.target.value})}
                             required
                           />
-                          <p className="text-xs text-gray-500 mt-1">You must be at least 5 years old</p>
+                          <p className="text-xs text-gray-500 mt-1">You must be at least 8 years old</p>
                         </div>
                       </div>
 
@@ -748,6 +823,128 @@ function EventsSection({ events, toast }) {
                         )}
                       </div>
 
+                      {/* Team Members for Couple Run / Family Run */}
+                      {(event.category === 'Couple 3K' || event.category === 'Family 3K') && (
+                        <div className="border-t pt-4 space-y-3" data-testid="team-members-section">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">
+                              {event.category === 'Couple 3K' ? 'Partner Details' : 'Family Member Details'} *
+                            </Label>
+                            {event.category === 'Family 3K' && (
+                              <span className="text-xs text-gray-500">
+                                {1 + (registrationData.team_members?.length || 0)} of 4 (min 3)
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600 bg-teal-50 border border-teal-200 rounded p-2">
+                            👥 All team members will share the <strong>same BIB number</strong>. The lead participant (you) will receive all BIB cards via email.
+                          </p>
+
+                          {(registrationData.team_members || []).map((member, idx) => (
+                            <div key={idx} className="bg-gray-50 border-2 border-gray-200 rounded-lg p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <h5 className="font-semibold text-teal-700">
+                                  {event.category === 'Couple 3K' ? 'Partner' : `Family Member ${idx + 2}`}
+                                </h5>
+                                {event.category === 'Family 3K' && (registrationData.team_members.length > 2) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setRegistrationData(prev => ({
+                                      ...prev,
+                                      team_members: prev.team_members.filter((_, i) => i !== idx)
+                                    }))}
+                                    className="text-red-500 text-xs hover:text-red-700"
+                                    data-testid={`remove-member-${idx}`}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  placeholder="Full Name *"
+                                  value={member.user_name}
+                                  required
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { user_name: e.target.value })}
+                                />
+                                <select
+                                  value={member.gender}
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { gender: e.target.value })}
+                                  className="w-full px-3 py-2 border rounded-md"
+                                  required
+                                >
+                                  <option value="male">Male</option>
+                                  <option value="female">Female</option>
+                                  <option value="other">Other</option>
+                                </select>
+                                <Input
+                                  type="date"
+                                  placeholder="DOB *"
+                                  value={member.dob}
+                                  min="1925-01-01"
+                                  max={new Date(Date.now() - 8 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                  required
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { dob: e.target.value })}
+                                />
+                                <select
+                                  value={member.tshirt_size}
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { tshirt_size: e.target.value })}
+                                  className="w-full px-3 py-2 border rounded-md"
+                                  required
+                                >
+                                  <option value="XS">XS</option>
+                                  <option value="S">S</option>
+                                  <option value="M">M</option>
+                                  <option value="L">L</option>
+                                  <option value="XL">XL</option>
+                                  <option value="XXL">XXL</option>
+                                </select>
+                                <select
+                                  value={member.blood_group}
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { blood_group: e.target.value })}
+                                  className="w-full px-3 py-2 border rounded-md"
+                                  required
+                                >
+                                  {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                                </select>
+                                <Input
+                                  type="tel"
+                                  placeholder="Mobile (10 digit) *"
+                                  inputMode="numeric"
+                                  pattern="[6-9][0-9]{9}"
+                                  maxLength={10}
+                                  value={member.user_phone}
+                                  required
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { user_phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                                />
+                                <Input
+                                  type="email"
+                                  placeholder="Email *"
+                                  value={member.user_email}
+                                  required
+                                  className="col-span-2"
+                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { user_email: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                          {event.category === 'Family 3K' && registrationData.team_members.length < 3 && (
+                            <button
+                              type="button"
+                              data-testid="add-family-member-btn"
+                              onClick={() => setRegistrationData(prev => ({
+                                ...prev,
+                                team_members: [...(prev.team_members || []), emptyTeamMember()],
+                              }))}
+                              className="w-full px-4 py-2 border-2 border-dashed border-teal-400 rounded-lg text-teal-700 hover:bg-teal-50 font-semibold"
+                            >
+                              + Add another family member
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       <div className="border-t pt-4 space-y-2">
                         <Label className="text-base font-semibold block mb-2">Consent (All required) *</Label>
 
@@ -862,7 +1059,8 @@ function RulesSection() {
         "Participants must be 8 years or older",
         "Students must carry valid ID cards",
         "NCC/NSS members need membership proof",
-        "Family run: 1 Male, 1 Female, 1 Child (min 8 years)"
+        "Couple Run: 2 partners running together — both share the same BIB number",
+        "Family Run: 3 to 4 family members (e.g. parents + children) — all share the same family BIB number",
       ]
     },
     {
@@ -871,6 +1069,7 @@ function RulesSection() {
         "Online registration mandatory",
         "Registration closes on 15th May 2026",
         "BIB numbers issued after payment confirmation",
+        "Single registration fee covers entire team for Couple/Family Runs",
         "No refunds after registration"
       ]
     },
@@ -995,22 +1194,37 @@ function ContactSection() {
           </Card>
         </div>
 
-        <Card className="card-modern mt-8 max-w-3xl mx-auto">
+        <Card className="card-modern mt-8 max-w-5xl mx-auto overflow-hidden">
           <CardHeader>
             <CardTitle className="text-2xl text-center">Location</CardTitle>
           </CardHeader>
-          <CardContent className="text-center">
-            <a 
-              href="https://maps.app.goo.gl/GpfEXt7QU5pCxFRdA"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-teal-600 hover:text-teal-700 font-semibold text-lg underline mb-3 block"
-            >
-              RV INSTITUTE OF TECHNOLOGY AND MANAGEMENT, Chaithanya Layout, 8th Phase, J. P. Nagar, Bengaluru, Kothnur, Karnataka 560083
-            </a>
-            <p className="text-gray-700 font-semibold text-lg">RV Institute of Technology and Management</p>
-            <p className="text-gray-600 mt-2">National Cadet Corps</p>
-            <p className="text-gray-600">Bengaluru, Karnataka</p>
+          <CardContent>
+            <div className="rounded-lg overflow-hidden border-2 border-teal-100 mb-4">
+              <iframe
+                src="https://www.google.com/maps?q=RV+Institute+of+Technology+and+Management,+Chaithanya+Layout,+8th+Phase,+J.P.+Nagar,+Bengaluru,+Kothnur,+Karnataka+560083&output=embed"
+                width="100%"
+                height="380"
+                style={{ border: 0 }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="RV Institute of Technology and Management"
+                data-testid="rvitm-map-iframe"
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-gray-700 font-semibold text-lg">RV Institute of Technology and Management</p>
+              <p className="text-gray-600">Chaithanya Layout, 8th Phase, J. P. Nagar, Bengaluru, Kothnur, Karnataka 560083</p>
+              <a
+                href="https://maps.app.goo.gl/GpfEXt7QU5pCxFRdA"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-3 text-teal-600 hover:text-teal-700 font-semibold underline"
+              >
+                <MapPin className="w-4 h-4" /> Open in Google Maps
+              </a>
+              <p className="text-gray-600 mt-2">National Cadet Corps · Bengaluru, Karnataka</p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -1831,58 +2045,6 @@ function AdminPage({ toast }) {
           </div>
         </div>
 
-        {/* Payment Transactions */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Payment Transactions</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100 border-b-2 border-gray-200">
-                  <th className="text-left p-4 font-semibold text-gray-700">BIB</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Name</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Email</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Amount</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Event</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Status</th>
-                  <th className="text-left p-4 font-semibold text-gray-700 min-w-[120px]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((trans) => (
-                  <tr key={trans.id} className="border-b border-gray-200 hover:bg-orange-50 transition-colors">
-                    <td className="p-4 font-bold text-orange-600">{trans.bib_number}</td>
-                    <td className="p-4 text-gray-800">{trans.user_name}</td>
-                    <td className="p-4 text-gray-600">{trans.user_email}</td>
-                    <td className="p-4 font-semibold text-gray-800">₹{trans.amount}</td>
-                    <td className="p-4 text-gray-600">{getEventName(trans.event_id)}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        trans.payment_status === 'paid' 
-                          ? 'bg-green-100 text-green-800 border border-green-200' 
-                          : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                      }`}>
-                        {trans.payment_status}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => handleDeleteTransaction(trans.id)}
-                        className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {transactions.length === 0 && (
-              <p className="text-center text-gray-500 py-8">No transactions yet</p>
-            )}
-          </div>
-        </div>
-
       {/* Add Event Modal */}
       {showAddEventDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -2489,6 +2651,44 @@ function AdminPage({ toast }) {
                     </span>
                   </div>
                 </div>
+
+                {/* Team members for Couple/Family Run */}
+                {(selectedRegistration.team_members || []).length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-bold text-gray-800 mb-3">
+                      Team Members ({1 + selectedRegistration.team_members.length} total · same BIB)
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedRegistration.team_members.map((m, idx) => (
+                        <div key={idx} className="bg-teal-50 border-2 border-teal-200 rounded-lg p-3 text-sm">
+                          <div className="font-semibold text-teal-700 mb-1">
+                            {idx === 0 && selectedRegistration.team_members.length === 1 ? 'Partner' : `Member ${idx + 2}`}
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-gray-700">
+                            <div><span className="text-gray-500">Name:</span> {m.user_name}</div>
+                            <div><span className="text-gray-500">Gender:</span> <span className="capitalize">{m.gender}</span></div>
+                            <div><span className="text-gray-500">DOB:</span> {m.dob}</div>
+                            <div><span className="text-gray-500">T-Shirt:</span> {m.tshirt_size}</div>
+                            <div><span className="text-gray-500">Blood:</span> {m.blood_group}</div>
+                            <div><span className="text-gray-500">Phone:</span> {m.user_phone || '—'}</div>
+                            <div className="col-span-2 break-all"><span className="text-gray-500">Email:</span> {m.user_email || '—'}</div>
+                          </div>
+                          {m.bib_card && (
+                            <div className="mt-2">
+                              <a
+                                href={m.bib_card}
+                                download={`BIB_${selectedRegistration.bib_number}_${(m.user_name || 'member').replace(/\s+/g, '_')}.png`}
+                                className="text-xs text-teal-600 hover:text-teal-800 underline"
+                              >
+                                Download BIB Card
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
