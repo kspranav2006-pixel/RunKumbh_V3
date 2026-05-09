@@ -5,8 +5,9 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import re
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import List, Optional, Dict, Tuple
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -94,6 +95,18 @@ class Event(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Registration Models
+# ── Shared name validation ──────────────────────────────────────────────────
+_NAME_RE = re.compile(r"^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF' .-]{2,100}$")
+
+def _validate_name(value: str, label: str = "Name") -> str:
+    v = value.strip()
+    if not v:
+        raise ValueError(f"{label} is required.")
+    if not _NAME_RE.match(v):
+        raise ValueError(f"{label} must contain only letters — no numbers or special characters.")
+    return v
+# ────────────────────────────────────────────────────────────────────────────
+
 class TeamMember(BaseModel):
     """Additional participant for Couple Run / Family Run team registrations."""
     user_name: str
@@ -105,7 +118,12 @@ class TeamMember(BaseModel):
     blood_group: str = "A+"
     emergency_contact_name: str = ""
     emergency_contact: str = ""
-    bib_card: Optional[str] = None  # per-member BIB card image (same BIB number, own name+blood)
+    bib_card: Optional[str] = None
+
+    @field_validator("user_name")
+    @classmethod
+    def validate_user_name(cls, v):
+        return _validate_name(v, "Team member name")
 
 
 class RegistrationCreate(BaseModel):
@@ -199,6 +217,11 @@ class PaymentCheckoutRequest(BaseModel):
     consent_photography: bool
     consent_results_published: bool
     origin_url: str
+
+    @field_validator("user_name")
+    @classmethod
+    def validate_user_name(cls, v):
+        return _validate_name(v, "Full name")
 
 class PaymentTransaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -1033,6 +1056,68 @@ async def export_registrations(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=registrations.csv"}
+    )
+
+@api_router.get("/admin/registrations/bibs/download-zip")
+async def download_confirmed_bibs_zip():
+    """Stream a ZIP file containing BIB card PNGs for all confirmed registrations,
+    including individual BIB cards for team members (Couple / Family runs)."""
+    import zipfile
+    from fastapi.responses import StreamingResponse
+
+    confirmed = await db.registrations.find(
+        {"status": "confirmed"},
+        {"_id": 0, "bib_number": 1, "user_name": 1, "bib_card": 1, "team_members": 1}
+    ).to_list(length=None)
+
+    # Filter in Python — catches None, "", and missing keys
+    confirmed = [r for r in confirmed if r.get("bib_card")]
+
+    if not confirmed:
+        raise HTTPException(status_code=404, detail="No confirmed registrations with BIB cards found. BIB cards are generated when a registration is confirmed.")
+
+    zip_buffer = io.BytesIO()
+    files_added = 0
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for reg in confirmed:
+            bib_no = reg.get("bib_number", "UNKNOWN")
+            name   = (reg.get("user_name") or "participant").replace(" ", "_")
+
+            # Lead participant BIB card
+            bib_b64 = reg.get("bib_card", "")
+            if bib_b64:
+                if "," in bib_b64:
+                    bib_b64 = bib_b64.split(",", 1)[1]
+                try:
+                    img_bytes = base64.b64decode(bib_b64)
+                    zf.writestr(f"BIB_{bib_no}_{name}.png", img_bytes)
+                    files_added += 1
+                except Exception as e:
+                    logger.warning(f"Could not decode BIB card for {bib_no}: {e}")
+
+            # Team member BIB cards
+            for i, member in enumerate(reg.get("team_members") or [], start=2):
+                m_card = member.get("bib_card", "")
+                if not m_card:
+                    continue
+                m_name = (member.get("user_name") or f"member_{i}").replace(" ", "_")
+                if "," in m_card:
+                    m_card = m_card.split(",", 1)[1]
+                try:
+                    img_bytes = base64.b64decode(m_card)
+                    zf.writestr(f"BIB_{bib_no}_{m_name}_member{i}.png", img_bytes)
+                    files_added += 1
+                except Exception as e:
+                    logger.warning(f"Could not decode team member BIB for {bib_no} member {i}: {e}")
+
+    if files_added == 0:
+        raise HTTPException(status_code=404, detail="Confirmed registrations found but BIB card image data could not be read. Please regenerate BIB cards.")
+
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        iter([zip_buffer.getvalue()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=confirmed_bib_cards.zip"}
     )
 
 @api_router.post("/admin/registrations/{registration_id}/checkin")

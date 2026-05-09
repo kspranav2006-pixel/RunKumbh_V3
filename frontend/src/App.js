@@ -363,6 +363,16 @@ function EventsSection({ events, toast }) {
     e.preventDefault();
 
     // ── Client-side validations ──
+    const NAME_RE = /^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF' .-]{2,100}$/;
+    if (!NAME_RE.test((registrationData.user_name || '').trim())) {
+      toast({
+        title: 'Invalid Name',
+        description: 'Full name must contain only letters, spaces, hyphens or apostrophes — no numbers or special characters.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const phone = (registrationData.user_phone || '').trim();
     if (!/^[6-9]\d{9}$/.test(phone)) {
       toast({
@@ -445,6 +455,10 @@ function EventsSection({ events, toast }) {
         toast({ title: `${label}: Missing details`, description: 'Please fill all required fields.', variant: 'destructive' });
         return;
       }
+      if (!NAME_RE.test(m.user_name.trim())) {
+        toast({ title: `${label}: Invalid Name`, description: 'Name must contain only letters, spaces, hyphens or apostrophes — no numbers or special characters.', variant: 'destructive' });
+        return;
+      }
       if (!/^[6-9]\d{9}$/.test((m.user_phone || '').trim())) {
         toast({ title: `${label}: Invalid phone`, description: '10 digits, must start with 6, 7, 8 or 9.', variant: 'destructive' });
         return;
@@ -477,18 +491,19 @@ function EventsSection({ events, toast }) {
       });
 
       if (response.data?.payment_url) {
-        // Open the SAP payment portal in a new tab
-        window.open(response.data.payment_url, '_blank', 'noopener,noreferrer');
+        // Persist the payment URL so users can re-open it if their browser blocks popups
+        try { sessionStorage.setItem('sap_payment_url', response.data.payment_url); } catch {}
 
         toast({
           title: 'Almost done! 🏃',
-          description: `Registration saved for ${response.data.event_title}. Complete payment on the RVEI portal — we'll email your BIB card once the Admin confirms.`,
-          duration: 12000,
+          description: `Registration saved for ${response.data.event_title}. Redirecting to RVEI payment portal...`,
+          duration: 4000,
         });
 
-        // Close the registration modal
-        setSelectedEvent(null);
-        setIsRegistering(false);
+        // Redirect in same tab — never blocked, matches the original flow
+        setTimeout(() => {
+          window.location.href = response.data.payment_url;
+        }, 800);
       } else {
         throw new Error('No payment URL returned');
       }
@@ -638,6 +653,9 @@ function EventsSection({ events, toast }) {
                           value={registrationData.user_name}
                           onChange={(e) => setRegistrationData({ ...registrationData, user_name: e.target.value })}
                         />
+                        {registrationData.user_name && !/^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF' .-]{2,100}$/.test(registrationData.user_name.trim()) && (
+                          <p className="mt-1 text-xs text-red-500">❌ Name cannot contain numbers or special characters.</p>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
@@ -861,22 +879,29 @@ function EventsSection({ events, toast }) {
                                 )}
                               </div>
                               <div className="grid grid-cols-2 gap-2">
-                                <Input
-                                  placeholder="Full Name *"
-                                  value={member.user_name}
-                                  required
-                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { user_name: e.target.value })}
-                                />
-                                <select
-                                  value={member.gender}
-                                  onChange={(e) => updateTeamMember(setRegistrationData, idx, { gender: e.target.value })}
-                                  className="w-full px-3 py-2 border rounded-md"
-                                  required
-                                >
-                                  <option value="male">Male</option>
-                                  <option value="female">Female</option>
-                                  <option value="other">Other</option>
-                                </select>
+                                <div className="col-span-1">
+                                  <Input
+                                    placeholder="Full Name *"
+                                    value={member.user_name}
+                                    required
+                                    onChange={(e) => updateTeamMember(setRegistrationData, idx, { user_name: e.target.value })}
+                                  />
+                                  {member.user_name && !/^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF' .-]{2,100}$/.test(member.user_name.trim()) && (
+                                    <p className="mt-1 text-xs text-red-500">❌ No numbers or special characters.</p>
+                                  )}
+                                </div>
+                                <div className="col-span-1">
+                                  <select
+                                    value={member.gender}
+                                    onChange={(e) => updateTeamMember(setRegistrationData, idx, { gender: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md"
+                                    required
+                                  >
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                  </select>
+                                </div>
                                 <Input
                                   type="date"
                                   placeholder="DOB *"
@@ -1401,6 +1426,7 @@ function AdminPage({ toast }) {
 
   useEffect(() => {
     if (!authenticated) return;
+    // Recreate the interval whenever filters change so it always fetches with current filters
     const refreshInterval = setInterval(() => {
       fetchData();
     }, 15000);
@@ -1415,7 +1441,7 @@ function AdminPage({ toast }) {
       clearInterval(keepAliveInterval);
       clearInterval(tickInterval);
     };
-  }, [authenticated]);
+  }, [authenticated, searchQuery, filterCategory, filterGender, filterCheckedIn]);
 
   const fetchData = async () => {
     try {
@@ -1462,6 +1488,52 @@ function AdminPage({ toast }) {
     
     window.open(url, '_blank');
     toast({ title: 'Export Started', description: 'Your CSV file is downloading...' });
+  };
+
+  const handleDownloadAllBibs = async () => {
+    const confirmed = registrations.filter(r => r.status === 'confirmed');
+    if (confirmed.length === 0) {
+      toast({ title: 'No Confirmed Registrations', description: 'There are no confirmed registrations yet.', variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Preparing ZIP…', description: `Bundling BIB cards for ${confirmed.length} confirmed registration(s). Please wait…` });
+    try {
+      const response = await axios.get(`${API}/admin/registrations/bibs/download-zip`, {
+        responseType: 'blob',
+        timeout: 60000,
+      });
+
+      // If server returned an error disguised as a blob, decode and show it
+      if (response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const json = JSON.parse(text);
+        toast({ title: 'Download Failed', description: json.detail || 'Unknown error from server.', variant: 'destructive' });
+        return;
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'confirmed_bib_cards.zip');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast({ title: 'Download Ready ✅', description: 'confirmed_bib_cards.zip has been downloaded.' });
+    } catch (err) {
+      // Decode blob error body so we can show the real server message
+      let detail = 'Could not generate ZIP. Please try again.';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          detail = json.detail || detail;
+        } catch (_) {}
+      } else if (err.response?.data?.detail) {
+        detail = err.response.data.detail;
+      }
+      toast({ title: 'Download Failed', description: detail, variant: 'destructive' });
+    }
   };
 
   const handleManualBibLookup = async () => {
@@ -1854,6 +1926,16 @@ function AdminPage({ toast }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Export CSV
+              </button>
+              <button
+                onClick={handleDownloadAllBibs}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+                title="Download BIB cards of all confirmed registrations as a ZIP"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download BIB Cards
               </button>
               <button
                 onClick={() => setShowAddRegDialog(true)}
