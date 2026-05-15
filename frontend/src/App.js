@@ -1193,13 +1193,13 @@ function ContactSection() {
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-orange-600" />
                 <div>
-                  <CardTitle className="text-xl">KS Pranav</CardTitle>
+                  <CardTitle className="text-xl">Mitali Priyadarshi</CardTitle>
                   <p className="text-sm text-gray-600">Event Coordinator</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-orange-600 font-semibold text-xl">+91 8073290482</p>
+              <p className="text-orange-600 font-semibold text-xl">+91 8233775676</p>
             </CardContent>
           </Card>
 
@@ -2679,9 +2679,41 @@ function AdminPage({ toast }) {
                       className="w-full h-auto"
                     />
                   </div>
+                ) : selectedRegistration.bib_number ? (
+                  <div className="border-2 border-dashed border-teal-300 rounded-lg p-10 text-center bg-teal-50">
+                    <div className="inline-block w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p className="text-teal-700 text-sm">Loading BIB card image…</p>
+                  </div>
                 ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center bg-gray-50">
-                    <p className="text-gray-500">BIB Card not generated yet.</p>
+                  <div className="border-2 border-dashed border-orange-300 rounded-lg p-8 text-center bg-orange-50">
+                    <p className="text-orange-700 font-semibold mb-2">BIB Card not generated yet</p>
+                    <p className="text-orange-600 text-xs mb-3">
+                      This runner is currently <strong>pending payment</strong>. Once SAP confirms their payment, click below to generate the BIB number, create the BIB card, and email it.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await axios.put(`${API}/admin/registrations/${selectedRegistration.id}`, { status: 'confirmed' });
+                          toast({
+                            title: 'BIB Generated ✓',
+                            description: `${res.data?.bib_number || 'BIB'} created and emailed to ${selectedRegistration.user_email}.`,
+                          });
+                          // Refresh modal with full data + refresh row in list
+                          const full = await axios.get(`${API}/admin/registrations/${selectedRegistration.id}/full`);
+                          setSelectedRegistration(full.data);
+                          setRegistrations(curr => curr.map(r => r.id === selectedRegistration.id
+                            ? { ...r, status: 'confirmed', bib_number: full.data.bib_number }
+                            : r
+                          ));
+                        } catch (e) {
+                          toast({ title: 'Failed', description: e.response?.data?.detail || 'Could not generate BIB.', variant: 'destructive' });
+                        }
+                      }}
+                      data-testid="modal-confirm-and-generate-bib"
+                      className="px-5 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white rounded-lg font-bold text-sm shadow"
+                    >
+                      Confirm Payment & Generate BIB
+                    </button>
                   </div>
                 )}
 
@@ -2820,4 +2852,4 @@ function AdminPage({ toast }) {
   );
 }
 
-export default App;
+export default App;0
