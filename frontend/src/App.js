@@ -1373,15 +1373,19 @@ function AdminPage({ toast }) {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  const handleDownloadBibCard = (bibCard, bibNumber) => {
-    if (!bibCard) {
+  const handleDownloadBibCard = async (bibCard, bibNumber, regId) => {
+    let cardData = bibCard;
+    // If the list view stripped the bib_card payload, fetch it on demand
+    if (!cardData && regId) {
+      const full = await fetchFullRegistration(regId);
+      cardData = full?.bib_card;
+    }
+    if (!cardData) {
       toast({ title: 'Error', description: 'BIB card not available', variant: 'destructive' });
       return;
     }
-    
-    // Convert base64 to blob and download
     const link = document.createElement('a');
-    link.href = bibCard;
+    link.href = cardData;
     link.download = `BIB_${bibNumber}.png`;
     document.body.appendChild(link);
     link.click();
@@ -1389,9 +1393,31 @@ function AdminPage({ toast }) {
     toast({ title: 'Success', description: 'BIB card downloaded!' });
   };
 
-  const handleViewDetails = (registration) => {
+  const handleViewDetails = async (registration) => {
+    // Open modal immediately with the data we have, then upgrade with full BIB card image
     setSelectedRegistration(registration);
     setShowDetailsModal(true);
+    if (!registration.bib_card) {
+      try {
+        const res = await axios.get(`${API}/admin/registrations/${registration.id}/full`);
+        setSelectedRegistration(res.data);
+      } catch (e) {
+        console.error('Failed to load full BIB card:', e);
+      }
+    }
+  };
+
+  // Fetch the full registration (with bib_card image) on-demand. Cached in component memory.
+  const [bibCardCache, setBibCardCache] = useState({});
+  const fetchFullRegistration = async (regId) => {
+    if (bibCardCache[regId]) return bibCardCache[regId];
+    try {
+      const res = await axios.get(`${API}/admin/registrations/${regId}/full`);
+      setBibCardCache(prev => ({ ...prev, [regId]: res.data }));
+      return res.data;
+    } catch (e) {
+      return null;
+    }
   };
 
   const handleResendEmail = async (regId) => {
@@ -1426,13 +1452,13 @@ function AdminPage({ toast }) {
 
   useEffect(() => {
     if (!authenticated) return;
-    // Recreate the interval whenever filters change so it always fetches with current filters
+    // Auto-refresh every 60s (was 15s — too aggressive for ~1MB payloads)
     const refreshInterval = setInterval(() => {
       fetchData();
-    }, 15000);
+    }, 60000);
     const keepAliveInterval = setInterval(() => {
       axios.get(`${API}/`).then(() => setIsLive(true)).catch(() => setIsLive(false));
-    }, 30000);
+    }, 60000);
     const tickInterval = setInterval(() => {
       setSecondsAgo(prev => prev + 1);
     }, 1000);
@@ -1441,7 +1467,7 @@ function AdminPage({ toast }) {
       clearInterval(keepAliveInterval);
       clearInterval(tickInterval);
     };
-  }, [authenticated, searchQuery, filterCategory, filterGender, filterCheckedIn]);
+  }, [authenticated]);
 
   const fetchData = async () => {
     try {
@@ -1451,16 +1477,14 @@ function AdminPage({ toast }) {
       if (filterCategory) params.append('category', filterCategory);
       if (filterGender) params.append('gender', filterGender);
       if (filterCheckedIn !== '') params.append('checked_in', filterCheckedIn);
-      
+
       const queryString = params.toString();
       const url = queryString ? `${API}/admin/registrations?${queryString}` : `${API}/admin/registrations`;
-      
+
       const res = await axios.get(url);
       setEvents(res.data.events || []);
       setRegistrations(res.data.registrations || []);
-      setTransactions(res.data.transactions || []);
       setTotalRegistrations(res.data.total_registrations || 0);
-      setTotalRevenue(res.data.total_revenue || 0);
       setLastRefresh(new Date());
       setSecondsAgo(0);
       setIsLive(true);
@@ -1470,11 +1494,12 @@ function AdminPage({ toast }) {
     }
   };
 
-  // Trigger fetchData when filters change
+  // Debounced fetchData when filters change (no refetch on every keystroke)
   useEffect(() => {
-    if (authenticated) {
-      fetchData();
-    }
+    if (!authenticated) return;
+    const t = setTimeout(() => { fetchData(); }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, filterCategory, filterGender, filterCheckedIn]);
 
   const handleExportCSV = () => {
@@ -1673,21 +1698,35 @@ function AdminPage({ toast }) {
 
   const handleDeleteRegistration = async (regId) => {
     if (!window.confirm('Delete this registration?')) return;
+    // Optimistic update — remove row immediately
+    const prev = registrations;
+    setRegistrations(prev.filter(r => r.id !== regId));
+    setTotalRegistrations(t => Math.max(0, t - 1));
     try {
       await axios.delete(`${API}/admin/registrations/${regId}`);
       toast({ title: 'Success', description: 'Registration deleted' });
-      fetchData();
     } catch (error) {
+      setRegistrations(prev);  // revert
+      setTotalRegistrations(t => t + 1);
       toast({ title: 'Error', description: 'Failed to delete registration', variant: 'destructive' });
     }
   };
 
   const handleUpdateStatus = async (regId, newStatus) => {
+    // Optimistic update — flip status instantly
+    const prev = registrations;
+    setRegistrations(prev.map(r => r.id === regId ? { ...r, status: newStatus } : r));
     try {
-      await axios.put(`${API}/admin/registrations/${regId}`, { status: newStatus });
-      toast({ title: 'Success', description: 'Status updated' });
-      fetchData();
+      const res = await axios.put(`${API}/admin/registrations/${regId}`, { status: newStatus });
+      if (res.data?.bib_generated && res.data?.bib_number) {
+        // Refresh just this row's BIB number from server
+        setRegistrations(curr => curr.map(r => r.id === regId ? { ...r, status: newStatus, bib_number: res.data.bib_number } : r));
+        toast({ title: 'Confirmed ✓', description: `BIB ${res.data.bib_number} generated and emailed.` });
+      } else {
+        toast({ title: 'Status updated', description: `Set to ${newStatus.replace('_', ' ')}.` });
+      }
     } catch (error) {
+      setRegistrations(prev);  // revert
       toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
     }
   };
@@ -2088,11 +2127,11 @@ function AdminPage({ toast }) {
                           View
                         </button>
                         <button
-                          onClick={() => handleDownloadBibCard(reg.bib_card, reg.bib_number)}
+                          onClick={() => handleDownloadBibCard(null, reg.bib_number, reg.id)}
                           data-testid={`download-bib-${reg.bib_number}`}
-                          disabled={!reg.bib_card}
+                          disabled={!reg.bib_number}
                           className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
-                          title={reg.bib_card ? "Download BIB Card" : "BIB Card not available"}
+                          title={reg.bib_number ? "Download BIB Card" : "BIB Card not available"}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
                           BIB
@@ -2100,7 +2139,7 @@ function AdminPage({ toast }) {
                         <button
                           onClick={() => handleResendEmail(reg.id)}
                           data-testid={`resend-email-${reg.bib_number}`}
-                          disabled={!reg.bib_card}
+                          disabled={!reg.bib_number}
                           className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
                           title="Resend BIB Card Email"
                         >
@@ -2648,8 +2687,8 @@ function AdminPage({ toast }) {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
-                    onClick={() => handleDownloadBibCard(selectedRegistration.bib_card, selectedRegistration.bib_number)}
-                    disabled={!selectedRegistration.bib_card}
+                    onClick={() => handleDownloadBibCard(selectedRegistration.bib_card, selectedRegistration.bib_number, selectedRegistration.id)}
+                    disabled={!selectedRegistration.bib_number}
                     data-testid="modal-download-bib"
                     className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
                   >
@@ -2658,7 +2697,7 @@ function AdminPage({ toast }) {
                   </button>
                   <button
                     onClick={() => handleResendEmail(selectedRegistration.id)}
-                    disabled={!selectedRegistration.bib_card}
+                    disabled={!selectedRegistration.bib_number}
                     data-testid="modal-resend-email"
                     className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
                   >

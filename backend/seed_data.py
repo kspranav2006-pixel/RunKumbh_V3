@@ -26,7 +26,7 @@ async def seed_database():
         {
             "id": str(uuid.uuid4()),
             "title": "Open Men & Women - 5K Run",
-            "description": "Open category for all participants. Cash Prize: ₹24,000 total (₹12,000 per gender). 1st: ₹6,000, 2nd: ₹4,000, 3rd: ₹2,000. Medal, Certificate, T-Shirt & Refreshments included. Minimum 50 participants required.",
+            "description": "Open category for all participants. Cash Prize: ₹24,000 total (₹12,000 per gender). 1st: ₹6,000, 2nd: ₹4,000, 3rd: ₹2,000. Medal, Certificate, T-Shirt & Refreshments included. Minimum 50 participants required for each gender.",
             "date": "2026-05-30",
             "location": "RV Institute of Technology and Management, Bengaluru",
             "distance": "5 km",

@@ -626,62 +626,71 @@ async def get_all_registrations(
     gender: Optional[str] = None,
     checked_in: Optional[bool] = None
 ):
-    # Get all registrations
-    registrations = await db.registrations.find({}, {"_id": 0}).to_list(10000)
+    # Get events first (needed for category filter mapping)
+    events = await db.events.find({}, {"_id": 0}).to_list(1000)
+    event_dict = {e['id']: e for e in events}
+
+    # Build MongoDB query (server-side filtering — way faster than Python loop)
+    query: dict = {}
+    if gender:
+        query["gender"] = gender
+    if checked_in is not None:
+        query["checked_in"] = checked_in
+    if search:
+        # case-insensitive substring match on the indexed fields
+        rx = {"$regex": search, "$options": "i"}
+        query["$or"] = [
+            {"user_name": rx},
+            {"user_email": rx},
+            {"bib_number": rx},
+            {"user_phone": rx},
+        ]
+    if category:
+        # Map category name -> event ids
+        matching_event_ids = [eid for eid, e in event_dict.items() if e.get('category') == category]
+        query["event_id"] = {"$in": matching_event_ids or ["__none__"]}
+
+    # ── Performance: strip heavy bib_card base64 image (~500KB-1MB each) from list ──
+    projection = {
+        "_id": 0,
+        "bib_card": 0,
+        # Also strip per-member bib_card images from team_members (they're huge)
+        # MongoDB doesn't support nested array exclusion via projection cleanly,
+        # so we'll scrub them after the query.
+    }
+
+    registrations = await db.registrations.find(
+        query,
+        projection,
+    ).sort("registration_date", -1).to_list(10000)
+
     for reg in registrations:
         if isinstance(reg.get('registration_date'), str):
             reg['registration_date'] = datetime.fromisoformat(reg['registration_date'])
-    
-    # Get all payment transactions
-    transactions = await db.payment_transactions.find({}, {"_id": 0}).to_list(10000)
-    for trans in transactions:
-        if isinstance(trans.get('created_at'), str):
-            trans['created_at'] = datetime.fromisoformat(trans['created_at'])
-        if isinstance(trans.get('updated_at'), str):
-            trans['updated_at'] = datetime.fromisoformat(trans['updated_at'])
-    
-    # Get events for reference
-    events = await db.events.find({}, {"_id": 0}).to_list(1000)
-    event_dict = {e['id']: e for e in events}
-    
-    # Apply filters
-    if search or category or gender is not None or checked_in is not None:
-        filtered = []
-        for reg in registrations:
-            # Search filter (name, email, bib)
-            if search:
-                search_lower = search.lower()
-                if not (
-                    search_lower in reg.get('user_name', '').lower() or
-                    search_lower in reg.get('user_email', '').lower() or
-                    search_lower in reg.get('bib_number', '').lower()
-                ):
-                    continue
-            
-            # Category filter
-            if category:
-                event = event_dict.get(reg['event_id'])
-                if not event or event.get('category') != category:
-                    continue
-            
-            # Gender filter
-            if gender and reg.get('gender') != gender:
-                continue
-            
-            # Checked-in filter
-            if checked_in is not None and reg.get('checked_in', False) != checked_in:
-                continue
-            
-            filtered.append(reg)
-        registrations = filtered
-    
+        # Strip bib_card from team_members for the list payload
+        if reg.get('team_members'):
+            reg['team_members'] = [
+                {k: v for k, v in m.items() if k != 'bib_card'}
+                for m in reg['team_members']
+            ]
+
     return {
         "registrations": registrations,
-        "transactions": transactions,
         "events": events,
         "total_registrations": len(registrations),
-        "total_transactions": len(transactions)
     }
+
+
+@api_router.get("/admin/registrations/{registration_id}/full")
+async def get_registration_full(registration_id: str):
+    """Fetch the full registration including bib_card (heavy base64 image).
+    Called on-demand only when admin opens the Detail modal or hits Download/Email."""
+    reg = await db.registrations.find_one({"id": registration_id}, {"_id": 0})
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if isinstance(reg.get('registration_date'), str):
+        reg['registration_date'] = datetime.fromisoformat(reg['registration_date'])
+    return reg
 
 @api_router.post("/admin/registrations")
 async def create_manual_registration(registration: RegistrationCreate):
