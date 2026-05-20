@@ -185,7 +185,7 @@ function HeroSection({ scrollToSection }) {
         
         <div className="bg-white/15 backdrop-blur-md rounded-2xl p-6 mb-8 inline-block animate-fadeIn delay-400">
           <p className="text-white text-lg font-semibold mb-2">📅 Registration Period</p>
-          <p className="text-yellow-200 text-2xl font-bold">20th April - 15th May 2026</p>
+          <p className="text-yellow-200 text-2xl font-bold">20th April - 20th May 2026</p>
           <p className="text-white mt-3">🎁 Medal | Certificate | T-Shirt | Refreshments</p>
         </div>
         
@@ -528,7 +528,7 @@ function EventsSection({ events, toast }) {
             Choose Your Challenge & Run for Glory!
           </p>
           <div className="inline-block bg-gradient-primary text-white px-8 py-3 rounded-full text-lg font-bold shadow-xl animate-pulse">
-            Registration: 20 April - 15 May 2026
+            Registration: 20 April - 20 May 2026
           </div>
         </div>
 
@@ -1092,7 +1092,7 @@ function RulesSection() {
       title: "Registration",
       points: [
         "Online registration mandatory",
-        "Registration closes on 15th May 2026",
+        "Registration closes on 20th May 2026",
         "BIB numbers issued after payment confirmation",
         "Single registration fee covers entire team for Couple/Family Runs",
         "No refunds after registration"
@@ -1193,13 +1193,13 @@ function ContactSection() {
               <div className="flex items-center space-x-3">
                 <Phone className="w-7 h-7 text-orange-600" />
                 <div>
-                  <CardTitle className="text-xl">Mitali Priyadarshi</CardTitle>
+                  <CardTitle className="text-xl">Ks Pranav</CardTitle>
                   <p className="text-sm text-gray-600">Event Coordinator</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-orange-600 font-semibold text-xl">+91 8233775676</p>
+              <p className="text-orange-600 font-semibold text-xl">+91 807329082</p>
             </CardContent>
           </Card>
 
