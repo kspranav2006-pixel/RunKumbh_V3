@@ -335,100 +335,59 @@ def _bib_sort_key(bib: str):
 
 
 def generate_certificate(user_name: str, bib_number: str, event_category: str = "Monsoon Run 2.0") -> str:
-    """Generate an A4 landscape PNG certificate for a runner. Returns data URL."""
-    # A4 landscape @ 200 DPI = 2339 x 1654
-    width, height = 2339, 1654
-    img = Image.new('RGB', (width, height), '#FFFFFF')
+    """Generate an A4 landscape PNG certificate by overlaying name + BIB onto the
+    pre-rendered branded template for the given event category."""
+    # Map category -> template slug
+    slug = (event_category or '').lower().replace(' ', '_').replace('/', '_')
+    candidate = ROOT_DIR / "assets" / f"certificate_template_{slug}.png"
+    fallback = ROOT_DIR / "assets" / "certificate_template_open_5k.png"
+    template_path = candidate if candidate.exists() else fallback
+    if not template_path.exists():
+        # No template — keep app alive with a tiny placeholder image
+        img = Image.new('RGB', (4000, 2250), '#FFFFFF')
+    else:
+        img = Image.open(template_path).convert('RGB')
+
     draw = ImageDraw.Draw(img)
-
-    # Soft gradient background (teal-to-cream)
-    for y in range(height):
-        t = y / height
-        r = int(245 + (250 - 245) * t)
-        g = int(252 + (245 - 252) * t)
-        b = int(245 + (240 - 245) * t)
-        draw.rectangle([(0, y), (width, y + 1)], fill=(r, g, b))
-
-    # Decorative outer border + inner border
-    draw.rectangle([(60, 60), (width - 60, height - 60)], outline='#0D7377', width=8)
-    draw.rectangle([(90, 90), (width - 90, height - 90)], outline='#FF6B35', width=2)
-
-    # Top accent ribbon
-    draw.rectangle([(60, 60), (width - 60, 220)], fill='#0D7377')
 
     font_candidates = [
         "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     ]
-    italic_candidates = [
-        "/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
-    ]
     font_path = next((p for p in font_candidates if os.path.exists(p)), None)
-    italic_path = next((p for p in italic_candidates if os.path.exists(p)), font_path)
 
-    def F(size, italic=False):
-        path = italic_path if italic else font_path
-        return ImageFont.truetype(path, size) if path else ImageFont.load_default()
+    def F(size):
+        return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
 
-    # Title band
-    draw.text((width // 2, 140), "RUNKUMBH 2026 · MONSOON RUN 2.0",
-              fill='#FFFFFF', font=F(60), anchor="mm")
+    # Coordinates derived from the original pptx layout (rendered at 4000x2250)
+    # Name placeholder was centered at y=1046, width=3947 height=171
+    name_center_x = 4000 // 2
+    name_center_y = 1046 + 171 // 2  # ~1131
+    max_name_w, max_name_h = 3500, 220
 
-    # Big Certificate title
-    draw.text((width // 2, 360), "Certificate of Participation",
-              fill='#0D7377', font=F(110), anchor="mm")
-
-    # Subtitle
-    draw.text((width // 2, 470), "This is to certify that",
-              fill='#374151', font=F(48, italic=True), anchor="mm")
-
-    # Participant name — auto-fit
     name = (user_name or "Participant").strip()
-    name_size = 130
-    while name_size > 50:
-        bb = draw.textbbox((0, 0), name, font=F(name_size), anchor="mm")
-        if (bb[2] - bb[0]) <= (width - 400) and (bb[3] - bb[1]) <= 180:
+    size = 170
+    while size > 60:
+        bb = draw.textbbox((0, 0), name, font=F(size), anchor="mm")
+        if (bb[2] - bb[0]) <= max_name_w and (bb[3] - bb[1]) <= max_name_h:
             break
-        name_size -= 6
-    draw.text((width // 2, 640), name, fill='#0D7377', font=F(name_size), anchor="mm")
+        size -= 8
+    # Soft dark color over the light-greenish background
+    draw.text((name_center_x, name_center_y), name, fill="#0B3D2E", font=F(size), anchor="mm")
 
-    # Underline under name
-    draw.line([(width // 2 - 600, 750), (width // 2 + 600, 750)], fill='#FF6B35', width=4)
-
-    # Body text
-    body = f"has successfully participated in the {event_category} event"
-    draw.text((width // 2, 850), body, fill='#374151', font=F(52), anchor="mm")
-    draw.text((width // 2, 920), "organised by RV Institute of Technology and Management, Bengaluru",
-              fill='#374151', font=F(40, italic=True), anchor="mm")
-    draw.text((width // 2, 980), "in association with the National Cadet Corps.",
-              fill='#374151', font=F(40, italic=True), anchor="mm")
-
-    # BIB number box (centered, prominent)
-    bib_box_w, bib_box_h = 600, 180
-    bib_box_x = (width - bib_box_w) // 2
-    bib_box_y = 1100
-    draw.rounded_rectangle(
-        [(bib_box_x, bib_box_y), (bib_box_x + bib_box_w, bib_box_y + bib_box_h)],
-        radius=20, fill='#F5F5DC', outline='#0D7377', width=4,
-    )
-    draw.text((width // 2, bib_box_y + 40), "BIB NUMBER", fill='#6B7280', font=F(36), anchor="mm")
+    # BIB number placeholder was left-aligned starting at x=26, y=2050, w=896
+    bib_box = (26, 2050, 26 + 896, 2050 + 156)
+    bib_cx = (bib_box[0] + bib_box[2]) // 2
+    bib_cy = (bib_box[1] + bib_box[3]) // 2
     bib_text = bib_number or "—"
-    draw.text((width // 2, bib_box_y + 115), bib_text, fill='#0D7377', font=F(80), anchor="mm")
-
-    # Signature lines
-    sig_y = 1430
-    draw.line([(280, sig_y), (760, sig_y)], fill='#374151', width=3)
-    draw.text((520, sig_y + 35), "Event Coordinator", fill='#374151', font=F(36), anchor="mm")
-
-    draw.line([(width - 760, sig_y), (width - 280, sig_y)], fill='#374151', width=3)
-    draw.text((width - 520, sig_y + 35), "Director, RV Institute", fill='#374151', font=F(36), anchor="mm")
-
-    # Date footer
-    draw.text((width // 2, sig_y + 80), "Event Date · 30th May 2026 · Bengaluru",
-              fill='#6B7280', font=F(32, italic=True), anchor="mm")
+    bsize = 140
+    while bsize > 50:
+        bb = draw.textbbox((0, 0), bib_text, font=F(bsize), anchor="mm")
+        if (bb[2] - bb[0]) <= (bib_box[2] - bib_box[0]) - 40 and (bb[3] - bb[1]) <= (bib_box[3] - bib_box[1]) - 20:
+            break
+        bsize -= 8
+    draw.text((bib_cx, bib_cy), bib_text, fill="#FFFFFF", font=F(bsize), anchor="mm")
 
     buffer = io.BytesIO()
     img.save(buffer, format='PNG', optimize=True)
