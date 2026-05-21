@@ -1363,6 +1363,7 @@ function AdminPage({ toast }) {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterGender, setFilterGender] = useState('');
   const [filterCheckedIn, setFilterCheckedIn] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   
   // Check-in states
   const [activeTab, setActiveTab] = useState('registrations'); // registrations, checkin
