@@ -315,16 +315,125 @@ def generate_qr_code(bib_number: str) -> str:
     )
     qr.add_data(bib_number)
     qr.make(fit=True)
-    
+
     img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Convert to base64
     buffer = io.BytesIO()
     img.save(buffer, format='PNG')
     buffer.seek(0)
-    img_base64 = base64.b64encode(buffer.getvalue()).decode()
-    
-    return f"data:image/png;base64,{img_base64}"
+    return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+
+
+def _bib_sort_key(bib: str):
+    """Sort BIBs naturally: same prefix grouped, numeric suffix ascending. Empty BIBs last."""
+    if not bib:
+        return ("zzz", 999999)
+    import re
+    m = re.match(r"^([A-Z]+)(\d+)$", bib)
+    if m:
+        return (m.group(1), int(m.group(2)))
+    return (bib, 0)
+
+
+def generate_certificate(user_name: str, bib_number: str, event_category: str = "Monsoon Run 2.0") -> str:
+    """Generate an A4 landscape PNG certificate for a runner. Returns data URL."""
+    # A4 landscape @ 200 DPI = 2339 x 1654
+    width, height = 2339, 1654
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+
+    # Soft gradient background (teal-to-cream)
+    for y in range(height):
+        t = y / height
+        r = int(245 + (250 - 245) * t)
+        g = int(252 + (245 - 252) * t)
+        b = int(245 + (240 - 245) * t)
+        draw.rectangle([(0, y), (width, y + 1)], fill=(r, g, b))
+
+    # Decorative outer border + inner border
+    draw.rectangle([(60, 60), (width - 60, height - 60)], outline='#0D7377', width=8)
+    draw.rectangle([(90, 90), (width - 90, height - 90)], outline='#FF6B35', width=2)
+
+    # Top accent ribbon
+    draw.rectangle([(60, 60), (width - 60, 220)], fill='#0D7377')
+
+    font_candidates = [
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ]
+    italic_candidates = [
+        "/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
+    ]
+    font_path = next((p for p in font_candidates if os.path.exists(p)), None)
+    italic_path = next((p for p in italic_candidates if os.path.exists(p)), font_path)
+
+    def F(size, italic=False):
+        path = italic_path if italic else font_path
+        return ImageFont.truetype(path, size) if path else ImageFont.load_default()
+
+    # Title band
+    draw.text((width // 2, 140), "RUNKUMBH 2026 · MONSOON RUN 2.0",
+              fill='#FFFFFF', font=F(60), anchor="mm")
+
+    # Big Certificate title
+    draw.text((width // 2, 360), "Certificate of Participation",
+              fill='#0D7377', font=F(110), anchor="mm")
+
+    # Subtitle
+    draw.text((width // 2, 470), "This is to certify that",
+              fill='#374151', font=F(48, italic=True), anchor="mm")
+
+    # Participant name — auto-fit
+    name = (user_name or "Participant").strip()
+    name_size = 130
+    while name_size > 50:
+        bb = draw.textbbox((0, 0), name, font=F(name_size), anchor="mm")
+        if (bb[2] - bb[0]) <= (width - 400) and (bb[3] - bb[1]) <= 180:
+            break
+        name_size -= 6
+    draw.text((width // 2, 640), name, fill='#0D7377', font=F(name_size), anchor="mm")
+
+    # Underline under name
+    draw.line([(width // 2 - 600, 750), (width // 2 + 600, 750)], fill='#FF6B35', width=4)
+
+    # Body text
+    body = f"has successfully participated in the {event_category} event"
+    draw.text((width // 2, 850), body, fill='#374151', font=F(52), anchor="mm")
+    draw.text((width // 2, 920), "organised by RV Institute of Technology and Management, Bengaluru",
+              fill='#374151', font=F(40, italic=True), anchor="mm")
+    draw.text((width // 2, 980), "in association with the National Cadet Corps.",
+              fill='#374151', font=F(40, italic=True), anchor="mm")
+
+    # BIB number box (centered, prominent)
+    bib_box_w, bib_box_h = 600, 180
+    bib_box_x = (width - bib_box_w) // 2
+    bib_box_y = 1100
+    draw.rounded_rectangle(
+        [(bib_box_x, bib_box_y), (bib_box_x + bib_box_w, bib_box_y + bib_box_h)],
+        radius=20, fill='#F5F5DC', outline='#0D7377', width=4,
+    )
+    draw.text((width // 2, bib_box_y + 40), "BIB NUMBER", fill='#6B7280', font=F(36), anchor="mm")
+    bib_text = bib_number or "—"
+    draw.text((width // 2, bib_box_y + 115), bib_text, fill='#0D7377', font=F(80), anchor="mm")
+
+    # Signature lines
+    sig_y = 1430
+    draw.line([(280, sig_y), (760, sig_y)], fill='#374151', width=3)
+    draw.text((520, sig_y + 35), "Event Coordinator", fill='#374151', font=F(36), anchor="mm")
+
+    draw.line([(width - 760, sig_y), (width - 280, sig_y)], fill='#374151', width=3)
+    draw.text((width - 520, sig_y + 35), "Director, RV Institute", fill='#374151', font=F(36), anchor="mm")
+
+    # Date footer
+    draw.text((width // 2, sig_y + 80), "Event Date · 30th May 2026 · Bengaluru",
+              fill='#6B7280', font=F(32, italic=True), anchor="mm")
+
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG', optimize=True)
+    buffer.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
 
 # BIB card templates — one per race distance. 3K = blue banner, 5K = green banner.
 BIB_TEMPLATE_3K = ROOT_DIR / "assets" / "bib_template_3k.png"
@@ -624,7 +733,8 @@ async def get_all_registrations(
     search: Optional[str] = None,
     category: Optional[str] = None,
     gender: Optional[str] = None,
-    checked_in: Optional[bool] = None
+    checked_in: Optional[bool] = None,
+    status: Optional[str] = None,
 ):
     # Get events first (needed for category filter mapping)
     events = await db.events.find({}, {"_id": 0}).to_list(1000)
@@ -636,6 +746,9 @@ async def get_all_registrations(
         query["gender"] = gender
     if checked_in is not None:
         query["checked_in"] = checked_in
+    if status:
+        # status = "confirmed" | "pending_payment" | "cancelled" | "pending"
+        query["status"] = status
     if search:
         # case-insensitive substring match on the indexed fields
         rx = {"$regex": search, "$options": "i"}
@@ -654,15 +767,9 @@ async def get_all_registrations(
     projection = {
         "_id": 0,
         "bib_card": 0,
-        # Also strip per-member bib_card images from team_members (they're huge)
-        # MongoDB doesn't support nested array exclusion via projection cleanly,
-        # so we'll scrub them after the query.
     }
 
-    registrations = await db.registrations.find(
-        query,
-        projection,
-    ).sort("registration_date", -1).to_list(10000)
+    registrations = await db.registrations.find(query, projection).to_list(10000)
 
     for reg in registrations:
         if isinstance(reg.get('registration_date'), str):
@@ -673,6 +780,20 @@ async def get_all_registrations(
                 {k: v for k, v in m.items() if k != 'bib_card'}
                 for m in reg['team_members']
             ]
+
+    # Sort by category (5K first, then 3K, alphabetical) and then BIB sequence ascending.
+    # Pending/no-BIB rows sink to the bottom of each category.
+    def cat_order(c):
+        if c is None: return (3, "")
+        if "5K" in c: return (0, c)
+        if "3K" in c: return (1, c)
+        return (2, c)
+
+    def sort_key(r):
+        cat = event_dict.get(r.get('event_id'), {}).get('category')
+        return (cat_order(cat), _bib_sort_key(r.get('bib_number', '')))
+
+    registrations.sort(key=sort_key)
 
     return {
         "registrations": registrations,
@@ -691,6 +812,65 @@ async def get_registration_full(registration_id: str):
     if isinstance(reg.get('registration_date'), str):
         reg['registration_date'] = datetime.fromisoformat(reg['registration_date'])
     return reg
+
+
+@api_router.get("/admin/registrations/{registration_id}/certificate")
+async def get_registration_certificate(registration_id: str):
+    """Generate (on the fly) an A4 certificate PNG for a confirmed registration."""
+    reg = await db.registrations.find_one({"id": registration_id}, {"_id": 0, "bib_card": 0})
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg.get('status') != 'confirmed' or not reg.get('bib_number'):
+        raise HTTPException(status_code=400, detail="Certificates are only available for confirmed registrations with a BIB number.")
+    event = await db.events.find_one({"id": reg['event_id']}, {"_id": 0}) or {}
+    cert = generate_certificate(reg['user_name'], reg['bib_number'], event.get('category', 'Monsoon Run 2.0'))
+    return {
+        "certificate": cert,
+        "bib_number": reg['bib_number'],
+        "user_name": reg['user_name'],
+        "category": event.get('category', ''),
+    }
+
+
+@api_router.get("/admin/certificates/download-all")
+async def download_all_certificates():
+    """Bundle all confirmed-runner certificates (A4 PNG) as a ZIP, including team members."""
+    import zipfile
+    import io as _io
+    from fastapi.responses import StreamingResponse
+
+    regs = await db.registrations.find(
+        {"status": "confirmed", "bib_number": {"$ne": ""}},
+        {"_id": 0, "bib_card": 0},
+    ).to_list(10000)
+    if not regs:
+        raise HTTPException(status_code=404, detail="No confirmed registrations to generate certificates for.")
+
+    events = await db.events.find({}, {"_id": 0}).to_list(1000)
+    event_dict = {e['id']: e for e in events}
+
+    buf = _io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for r in regs:
+            cat = event_dict.get(r['event_id'], {}).get('category', 'Event')
+            # Lead certificate
+            cert = generate_certificate(r['user_name'], r['bib_number'], cat)
+            png_bytes = base64.b64decode(cert.split(',', 1)[1])
+            safe_name = (r['user_name'] or 'participant').replace(' ', '_').replace('/', '_')
+            zf.writestr(f"{cat.replace(' ', '_')}/{r['bib_number']}_{safe_name}.png", png_bytes)
+            # Team members share the same BIB, each gets their own certificate
+            for m in (r.get('team_members') or []):
+                m_cert = generate_certificate(m.get('user_name', 'Member'), r['bib_number'], cat)
+                m_png = base64.b64decode(m_cert.split(',', 1)[1])
+                m_safe = (m.get('user_name') or 'member').replace(' ', '_').replace('/', '_')
+                zf.writestr(f"{cat.replace(' ', '_')}/{r['bib_number']}_{m_safe}.png", m_png)
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="runkumbh_certificates.zip"'},
+    )
 
 @api_router.post("/admin/registrations")
 async def create_manual_registration(registration: RegistrationCreate):
@@ -995,71 +1175,101 @@ async def get_analytics():
 async def export_registrations(
     category: Optional[str] = None,
     gender: Optional[str] = None,
-    checked_in: Optional[bool] = None
 ):
-    """Export registrations as CSV"""
+    """Export confirmed registrations as a CSV grouped by category, with team members expanded as rows."""
     import csv
     import io
+    import re
     from fastapi.responses import StreamingResponse
-    
-    # Get registrations with filters
-    filter_query = {}
-    registrations = await db.registrations.find(filter_query, {"_id": 0}).to_list(10000)
+
+    # Only confirmed registrations
+    filter_query: dict = {"status": "confirmed"}
+    if gender:
+        filter_query["gender"] = gender
+
+    registrations = await db.registrations.find(filter_query, {"_id": 0, "bib_card": 0}).to_list(10000)
     events = await db.events.find({}, {"_id": 0}).to_list(1000)
     event_dict = {e['id']: e for e in events}
-    
-    # Apply filters
-    if category or gender is not None or checked_in is not None:
-        filtered = []
-        for reg in registrations:
-            event = event_dict.get(reg['event_id'])
-            if category and event and event.get('category') != category:
-                continue
-            if gender and reg.get('gender') != gender:
-                continue
-            if checked_in is not None and reg.get('checked_in', False) != checked_in:
-                continue
-            filtered.append(reg)
-        registrations = filtered
-    
-    # Create CSV
+
+    if category:
+        registrations = [r for r in registrations
+                         if event_dict.get(r['event_id'], {}).get('category') == category]
+
+    # Group registrations by category, then sort by BIB number within each category
+    by_cat: dict = {}
+    for reg in registrations:
+        cat = event_dict.get(reg['event_id'], {}).get('category', 'Other')
+        by_cat.setdefault(cat, []).append(reg)
+
+    def bib_key(reg):
+        bib = reg.get('bib_number', '') or ''
+        m = re.match(r"^([A-Z]+)(\d+)$", bib)
+        return (m.group(1), int(m.group(2))) if m else (bib, 0)
+
     output = io.StringIO()
     writer = csv.writer(output)
-    
-    # Headers
-    writer.writerow([
-        'BIB Number', 'Name', 'Email', 'Phone', 'Gender', 'DOB', 
-        'T-Shirt Size', 'Event Category', 'Event Title', 'Registration Fee',
+    headers = [
+        'BIB Number', 'Name', 'Email', 'Phone', 'Gender', 'DOB',
+        'T-Shirt Size', 'Blood Group',
+        'Event Category', 'Event Title', 'Registration Fee',
         'Emergency Contact Name', 'Emergency Contact', 'Medical Condition',
-        'Registration Date', 'Checked In', 'Check-in Time'
-    ])
-    
-    # Data rows
-    for reg in registrations:
-        event = event_dict.get(reg['event_id'], {})
-        checked_in_at = reg.get('checked_in_at', '')
-        if checked_in_at and not isinstance(checked_in_at, str):
-            checked_in_at = checked_in_at.isoformat()
-        
-        writer.writerow([
-            reg.get('bib_number', ''),
-            reg.get('user_name', ''),
-            reg.get('user_email', ''),
-            reg.get('user_phone', ''),
-            reg.get('gender', ''),
-            reg.get('dob', ''),
-            reg.get('tshirt_size', ''),
-            event.get('category', ''),
-            event.get('title', ''),
-            event.get('registration_fee', 0),
-            reg.get('emergency_contact_name', ''),
-            reg.get('emergency_contact', ''),
-            reg.get('has_medical_condition', ''),
-            reg.get('registration_date', ''),
-            'Yes' if reg.get('checked_in', False) else 'No',
-            checked_in_at
-        ])
-    
+        'Role', 'Signature'
+    ]
+
+    # Stable category order: 5K → 3K, then alphabetical within
+    def cat_order(c):
+        if "5K" in c: return (0, c)
+        if "3K" in c: return (1, c)
+        return (2, c)
+
+    for cat in sorted(by_cat.keys(), key=cat_order):
+        # Category section header
+        writer.writerow([])
+        writer.writerow([f"=== {cat} ==="])
+        writer.writerow(headers)
+
+        for reg in sorted(by_cat[cat], key=bib_key):
+            event = event_dict.get(reg['event_id'], {})
+            # Lead row
+            writer.writerow([
+                reg.get('bib_number', ''),
+                reg.get('user_name', ''),
+                reg.get('user_email', ''),
+                reg.get('user_phone', ''),
+                reg.get('gender', ''),
+                reg.get('dob', ''),
+                reg.get('tshirt_size', ''),
+                reg.get('blood_group', ''),
+                event.get('category', ''),
+                event.get('title', ''),
+                event.get('registration_fee', 0),
+                reg.get('emergency_contact_name', ''),
+                reg.get('emergency_contact', ''),
+                reg.get('has_medical_condition', '') or 'No',
+                'Lead' if reg.get('team_members') else 'Participant',
+                ''  # signature column
+            ])
+            # Team member rows (Couple / Family)
+            for m in (reg.get('team_members') or []):
+                writer.writerow([
+                    reg.get('bib_number', ''),
+                    m.get('user_name', ''),
+                    m.get('user_email', ''),
+                    m.get('user_phone', ''),
+                    m.get('gender', ''),
+                    m.get('dob', ''),
+                    m.get('tshirt_size', ''),
+                    m.get('blood_group', ''),
+                    event.get('category', ''),
+                    event.get('title', ''),
+                    '',  # fee already on lead row
+                    m.get('emergency_contact_name', ''),
+                    m.get('emergency_contact', ''),
+                    '',
+                    'Team Member',
+                    ''
+                ])
+
     output.seek(0)
     return StreamingResponse(
         iter([output.getvalue()]),

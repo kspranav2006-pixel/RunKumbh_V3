@@ -1477,6 +1477,7 @@ function AdminPage({ toast }) {
       if (filterCategory) params.append('category', filterCategory);
       if (filterGender) params.append('gender', filterGender);
       if (filterCheckedIn !== '') params.append('checked_in', filterCheckedIn);
+      if (filterStatus) params.append('status', filterStatus);
 
       const queryString = params.toString();
       const url = queryString ? `${API}/admin/registrations?${queryString}` : `${API}/admin/registrations`;
@@ -1500,7 +1501,7 @@ function AdminPage({ toast }) {
     const t = setTimeout(() => { fetchData(); }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterCategory, filterGender, filterCheckedIn]);
+  }, [searchQuery, filterCategory, filterGender, filterCheckedIn, filterStatus]);
 
   const handleExportCSV = () => {
     const params = new URLSearchParams();
@@ -1573,6 +1574,80 @@ function AdminPage({ toast }) {
     } catch (error) {
       toast({ title: 'Not Found', description: 'No registration found with this BIB number', variant: 'destructive' });
       setScannedParticipant(null);
+    }
+  };
+
+  // ── Certificate handlers ──
+  const handleDownloadCertificate = async (regId, bibNumber, userName) => {
+    try {
+      const res = await axios.get(`${API}/admin/registrations/${regId}/certificate`);
+      const link = document.createElement('a');
+      link.href = res.data.certificate;
+      const safe = (userName || 'participant').replace(/\s+/g, '_');
+      link.download = `Certificate_${bibNumber}_${safe}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: 'Certificate Downloaded', description: `${bibNumber} – ${userName}` });
+    } catch (error) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Could not generate certificate', variant: 'destructive' });
+    }
+  };
+
+  const handleDownloadAllCertificates = async () => {
+    if (!window.confirm('Generate certificates for ALL confirmed registrations and download as ZIP?')) return;
+    try {
+      const res = await axios.get(`${API}/admin/certificates/download-all`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'runkumbh_certificates.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast({ title: 'Certificates Downloaded', description: 'ZIP downloaded successfully' });
+    } catch (error) {
+      const errBlob = error.response?.data;
+      let msg = 'Failed to download certificates';
+      if (errBlob instanceof Blob) {
+        try { msg = JSON.parse(await errBlob.text())?.detail || msg; } catch (_) {}
+      }
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    }
+  };
+
+  // ── Edit Registration ──
+  const [editingReg, setEditingReg] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const openEditModal = (reg) => {
+    setEditingReg(reg);
+    setEditForm({
+      user_name: reg.user_name || '',
+      user_email: reg.user_email || '',
+      user_phone: reg.user_phone || '',
+      gender: reg.gender || 'male',
+      dob: reg.dob || '',
+      tshirt_size: reg.tshirt_size || 'M',
+      blood_group: reg.blood_group || 'A+',
+      emergency_contact_name: reg.emergency_contact_name || '',
+      emergency_contact: reg.emergency_contact || '',
+      has_medical_condition: reg.has_medical_condition || 'no',
+      medical_condition_details: reg.medical_condition_details || '',
+    });
+  };
+  const saveEdit = async () => {
+    if (!editingReg) return;
+    // Optimistic
+    const prev = registrations;
+    setRegistrations(prev.map(r => r.id === editingReg.id ? { ...r, ...editForm } : r));
+    try {
+      await axios.put(`${API}/admin/registrations/${editingReg.id}`, editForm);
+      toast({ title: 'Saved', description: 'Registration details updated' });
+      setEditingReg(null);
+    } catch (error) {
+      setRegistrations(prev);
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Failed to update', variant: 'destructive' });
     }
   };
 
@@ -1977,6 +2052,17 @@ function AdminPage({ toast }) {
                 Download BIB Cards
               </button>
               <button
+                onClick={handleDownloadAllCertificates}
+                data-testid="download-all-certificates-btn"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 font-medium transition-colors"
+                title="Download A4 certificates for all confirmed runners (incl. team members) as ZIP"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Download All Certificates
+              </button>
+              <button
                 onClick={() => setShowAddRegDialog(true)}
                 data-testid="add-paid-registration-btn"
                 className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg flex items-center gap-2 font-semibold shadow-md transition-all"
@@ -2033,13 +2119,28 @@ function AdminPage({ toast }) {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                data-testid="status-filter"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">All</option>
+                <option value="confirmed">✓ Confirmed</option>
+                <option value="pending_payment">⏳ Pending Payment</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Status</label>
               <select
                 value={filterCheckedIn}
                 onChange={(e) => setFilterCheckedIn(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               >
-                <option value="">All Status</option>
+                <option value="">All</option>
                 <option value="true">Checked In</option>
                 <option value="false">Not Checked In</option>
               </select>
@@ -2145,6 +2246,25 @@ function AdminPage({ toast }) {
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                           Email
+                        </button>
+                        <button
+                          onClick={() => handleDownloadCertificate(reg.id, reg.bib_number, reg.user_name)}
+                          data-testid={`certificate-${reg.bib_number}`}
+                          disabled={reg.status !== 'confirmed' || !reg.bib_number}
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          title={reg.status === 'confirmed' ? 'Download Certificate' : 'Available only for confirmed runners'}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                          Cert
+                        </button>
+                        <button
+                          onClick={() => openEditModal(reg)}
+                          data-testid={`edit-registration-${reg.bib_number || reg.id}`}
+                          className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                          title="Edit participant details"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                          Edit
                         </button>
                         <button
                           onClick={() => handleDeleteRegistration(reg.id)}
@@ -2645,6 +2765,93 @@ function AdminPage({ toast }) {
         </div>
       )}
 
+      {/* Edit Registration Modal */}
+      {editingReg && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50" data-testid="edit-modal">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-4 flex justify-between items-center rounded-t-xl z-10">
+              <div>
+                <h3 className="text-xl font-bold">Edit Registration</h3>
+                <p className="text-sm opacity-90">{editingReg.bib_number || 'pending payment'} · {editingReg.user_name}</p>
+              </div>
+              <button onClick={() => setEditingReg(null)} data-testid="close-edit-modal" className="text-white hover:bg-white/20 rounded-full p-2">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Full Name</label>
+                  <input className="w-full px-3 py-2 border rounded" value={editForm.user_name} onChange={(e) => setEditForm({...editForm, user_name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <input type="email" className="w-full px-3 py-2 border rounded" value={editForm.user_email} onChange={(e) => setEditForm({...editForm, user_email: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone</label>
+                  <input type="tel" maxLength={10} className="w-full px-3 py-2 border rounded" value={editForm.user_phone} onChange={(e) => setEditForm({...editForm, user_phone: e.target.value.replace(/\D/g,'').slice(0,10)})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Gender</label>
+                  <select className="w-full px-3 py-2 border rounded" value={editForm.gender} onChange={(e) => setEditForm({...editForm, gender: e.target.value})}>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">DOB</label>
+                  <input type="date" className="w-full px-3 py-2 border rounded" value={editForm.dob} onChange={(e) => setEditForm({...editForm, dob: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">T-Shirt Size</label>
+                  <select className="w-full px-3 py-2 border rounded" value={editForm.tshirt_size} onChange={(e) => setEditForm({...editForm, tshirt_size: e.target.value})}>
+                    {['XS','S','M','L','XL','XXL'].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Blood Group</label>
+                  <select className="w-full px-3 py-2 border rounded" value={editForm.blood_group} onChange={(e) => setEditForm({...editForm, blood_group: e.target.value})}>
+                    {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Emergency Contact Name</label>
+                  <input className="w-full px-3 py-2 border rounded" value={editForm.emergency_contact_name} onChange={(e) => setEditForm({...editForm, emergency_contact_name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Emergency Contact Phone</label>
+                  <input type="tel" maxLength={10} className="w-full px-3 py-2 border rounded" value={editForm.emergency_contact} onChange={(e) => setEditForm({...editForm, emergency_contact: e.target.value.replace(/\D/g,'').slice(0,10)})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Has Medical Condition?</label>
+                  <select className="w-full px-3 py-2 border rounded" value={editForm.has_medical_condition} onChange={(e) => setEditForm({...editForm, has_medical_condition: e.target.value})}>
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
+                {editForm.has_medical_condition === 'yes' && (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-1">Medical Condition Details</label>
+                    <textarea className="w-full px-3 py-2 border rounded" rows={2} value={editForm.medical_condition_details} onChange={(e) => setEditForm({...editForm, medical_condition_details: e.target.value})} />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-2 border-t">
+                <button onClick={() => setEditingReg(null)} className="flex-1 px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium">Cancel</button>
+                <button onClick={saveEdit} data-testid="save-edit-btn" className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold">Save Changes</button>
+              </div>
+              {editingReg.bib_number && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                  ⚠️ Editing details after BIB is generated only updates the database. To refresh the BIB card image with new info, you can use "Email It" in the participant details modal to regenerate and resend.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Registration Details Modal with BIB Preview */}
       {showDetailsModal && selectedRegistration && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50" data-testid="details-modal">
@@ -2852,4 +3059,4 @@ function AdminPage({ toast }) {
   );
 }
 
-export default App;0
+export default App;
