@@ -185,7 +185,7 @@ function HeroSection({ scrollToSection }) {
         
         <div className="bg-white/15 backdrop-blur-md rounded-2xl p-6 mb-8 inline-block animate-fadeIn delay-400">
           <p className="text-white text-lg font-semibold mb-2">📅 Registration Period</p>
-          <p className="text-yellow-200 text-2xl font-bold">20th April - 20th May 2026</p>
+          <p className="text-yellow-200 text-2xl font-bold">20th April - 25th May 2026</p>
           <p className="text-white mt-3">🎁 Medal | Certificate | T-Shirt | Refreshments</p>
         </div>
         
@@ -528,7 +528,7 @@ function EventsSection({ events, toast }) {
             Choose Your Challenge & Run for Glory!
           </p>
           <div className="inline-block bg-gradient-primary text-white px-8 py-3 rounded-full text-lg font-bold shadow-xl animate-pulse">
-            Registration: 20 April - 20 May 2026
+            Registration: 20th April - 25th May 2026
           </div>
         </div>
 
@@ -1092,7 +1092,7 @@ function RulesSection() {
       title: "Registration",
       points: [
         "Online registration mandatory",
-        "Registration closes on 20th May 2026",
+        "Registration closes on 25th May 2026",
         "BIB numbers issued after payment confirmation",
         "Single registration fee covers entire team for Couple/Family Runs",
         "No refunds after registration"
@@ -1294,7 +1294,7 @@ function Footer({ scrollToSection }) {
             <p className="text-white/80 mb-2">Lt. Raghu G M: +91 9743743618</p>
             <p className="text-white/80 mb-2">KS Pranav: +91 8073290482</p>
             <p className="text-white/80 mb-4">Prajeet Gurlahosur: +91 9845610718</p>
-            <p className="text-sm text-white/70">Registration: 20 April - 15 May 2026</p>
+            <p className="text-sm text-white/70">Registration: 20th April - 25th May 2026</p>
           </div>
         </div>
 
