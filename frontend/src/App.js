@@ -185,11 +185,11 @@ function HeroSection({ scrollToSection }) {
         
         <div className="bg-white/15 backdrop-blur-md rounded-2xl p-6 mb-8 inline-block animate-fadeIn delay-400">
           <p className="text-white text-lg font-semibold mb-2">📅 Registration Period</p>
-          <p className="text-yellow-200 text-2xl font-bold">20th April - 25th May 2026</p>
+          <p className="text-yellow-200 text-2xl font-bold">REGISTRATIONS HAVE BEEN CLOSED!</p>
           <p className="text-white mt-3">🎁 Medal | Certificate | T-Shirt | Refreshments</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn delay-400">
+        {/* <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn delay-400">
           <Button
             size="lg"
             onClick={() => scrollToSection('events')}
@@ -205,7 +205,7 @@ function HeroSection({ scrollToSection }) {
           >
             Contact Us
           </Button>
-        </div>
+        </div> */}
       </div>
     </section>
   );
@@ -528,7 +528,7 @@ function EventsSection({ events, toast }) {
             Choose Your Challenge & Run for Glory!
           </p>
           <div className="inline-block bg-gradient-primary text-white px-8 py-3 rounded-full text-lg font-bold shadow-xl animate-pulse">
-            Registration: 20th April - 25th May 2026
+            Registration Closed!
           </div>
         </div>
 
@@ -620,7 +620,7 @@ function EventsSection({ events, toast }) {
                   }
                 }}>
                   <DialogTrigger asChild>
-                    <Button
+                    {/* <Button
                       className="w-full bg-gradient-primary hover:opacity-90 text-white font-bold text-lg py-6"
                       onClick={() => {
                         const isCouple = event.category === 'Couple 3K';
@@ -635,7 +635,7 @@ function EventsSection({ events, toast }) {
                       }}
                     >
                       Register Now
-                    </Button>
+                    </Button> */}
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -1294,7 +1294,7 @@ function Footer({ scrollToSection }) {
             <p className="text-white/80 mb-2">Lt. Raghu G M: +91 9743743618</p>
             <p className="text-white/80 mb-2">KS Pranav: +91 8073290482</p>
             <p className="text-white/80 mb-4">Prajeet Gurlahosur: +91 9845610718</p>
-            <p className="text-sm text-white/70">Registration: 20th April - 25th May 2026</p>
+            <p className="text-sm text-white/70">REGISTRATIONS HAVE BEEN CLOSED FOR ALL CATEGORIES!</p>
           </div>
         </div>
 
