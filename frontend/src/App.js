@@ -189,7 +189,7 @@ function HeroSection({ scrollToSection }) {
           <p className="text-white mt-3">🎁 Medal | Certificate | T-Shirt | Refreshments</p>
         </div>
         
-        {/* <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn delay-400">
+         <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fadeIn delay-400">
           <Button
             size="lg"
             onClick={() => scrollToSection('events')}
@@ -205,7 +205,7 @@ function HeroSection({ scrollToSection }) {
           >
             Contact Us
           </Button>
-        </div> */}
+        </div> 
       </div>
     </section>
   );
@@ -620,7 +620,7 @@ function EventsSection({ events, toast }) {
                   }
                 }}>
                   <DialogTrigger asChild>
-                    {/* <Button
+                    <Button
                       className="w-full bg-gradient-primary hover:opacity-90 text-white font-bold text-lg py-6"
                       onClick={() => {
                         const isCouple = event.category === 'Couple 3K';
@@ -635,7 +635,7 @@ function EventsSection({ events, toast }) {
                       }}
                     >
                       Register Now
-                    </Button> */}
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
